@@ -36,6 +36,10 @@ const SAMPLE_PROMPTS = [
     label: '🌸 인물',
     text: 'Portrait of a young woman with flowing hair in a flower garden, soft natural light, bokeh background, hyperrealistic',
   },
+  {
+    label: '🎌 애니',
+    text: 'Anime style illustration of a girl standing on a rooftop at sunset, cherry blossoms falling, detailed eyes, vibrant colors, Studio Ghibli inspired, 4k',
+  },
 ]
 
 export default function PromptPanel({
