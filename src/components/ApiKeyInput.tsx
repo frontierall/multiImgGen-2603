@@ -10,7 +10,6 @@ interface Props {
 const PROVIDERS = [
   { key: 'together' as keyof ApiKeys, label: 'Together AI', color: '#7c3aed' },
   { key: 'openai' as keyof ApiKeys, label: 'OpenAI', color: '#10a37f' },
-  { key: 'google' as keyof ApiKeys, label: 'Google', color: '#4285f4' },
 ]
 
 export default function ApiKeyInput({ apiKeys, onChange }: Props) {

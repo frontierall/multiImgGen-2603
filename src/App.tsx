@@ -17,7 +17,6 @@ function loadApiKeys(): ApiKeys {
   return {
     together: sessionStorage.getItem('key_together') ?? '',
     openai:   sessionStorage.getItem('key_openai')   ?? '',
-    google:   sessionStorage.getItem('key_google')   ?? '',
   }
 }
 
@@ -41,7 +40,6 @@ export default function App() {
     // sessionStorage — wiped when the browser tab/window closes (no localStorage used)
     sessionStorage.setItem('key_together', keys.together)
     sessionStorage.setItem('key_openai',   keys.openai)
-    sessionStorage.setItem('key_google',   keys.google)
   }
 
   function toggleModel(id: string) {

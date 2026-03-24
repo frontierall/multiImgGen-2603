@@ -1,13 +1,12 @@
-export type Provider = 'together' | 'openai' | 'google'
+export type Provider = 'together' | 'openai'
 
 export interface ImageModel {
   id: string
   name: string
   author: string
-  pricePerImage: number // USD
+  pricePerImage: number // USD per image (1024×1024 기준)
   modelId: string
   provider: Provider
-  description?: string
   isNew?: boolean
 }
 
@@ -19,7 +18,7 @@ export interface CompanyGroup {
 }
 
 export const IMAGE_MODELS: ImageModel[] = [
-  // ── Black Forest Labs (Together AI) ──────────────────────────
+  // ── Black Forest Labs ────────────────────────────────────────
   {
     id: 'flux1-schnell',
     name: 'FLUX.1 Schnell',
@@ -29,24 +28,16 @@ export const IMAGE_MODELS: ImageModel[] = [
     provider: 'together',
   },
   {
-    id: 'flux1-krea',
-    name: 'FLUX.1 Krea',
+    id: 'flux1-krea-dev',
+    name: 'FLUX.1 Krea [dev]',
     author: 'Black Forest Labs',
     pricePerImage: 0.025,
-    modelId: 'black-forest-labs/FLUX.1-krea',
-    provider: 'together',
-  },
-  {
-    id: 'flux1-dev',
-    name: 'FLUX.1 [dev]',
-    author: 'Black Forest Labs',
-    pricePerImage: 0.025,
-    modelId: 'black-forest-labs/FLUX.1-dev',
+    modelId: 'black-forest-labs/FLUX.1-krea-dev',
     provider: 'together',
   },
   {
     id: 'flux11-pro',
-    name: 'FLUX 1.1 Pro',
+    name: 'FLUX.1.1 Pro',
     author: 'Black Forest Labs',
     pricePerImage: 0.04,
     modelId: 'black-forest-labs/FLUX.1.1-pro',
@@ -54,79 +45,25 @@ export const IMAGE_MODELS: ImageModel[] = [
   },
   {
     id: 'flux1-kontext-pro',
-    name: 'FLUX.1 Kontext [pro]',
+    name: 'FLUX.1 Kontext Pro',
     author: 'Black Forest Labs',
     pricePerImage: 0.04,
     modelId: 'black-forest-labs/FLUX.1-kontext-pro',
     provider: 'together',
-    isNew: true,
   },
   {
     id: 'flux1-kontext-max',
-    name: 'FLUX.1 Kontext [max]',
+    name: 'FLUX.1 Kontext Max',
     author: 'Black Forest Labs',
     pricePerImage: 0.08,
     modelId: 'black-forest-labs/FLUX.1-kontext-max',
     provider: 'together',
-    isNew: true,
-  },
-  {
-    id: 'flux2-dev',
-    name: 'FLUX.2 [dev]',
-    author: 'Black Forest Labs',
-    pricePerImage: 0.025,
-    modelId: 'black-forest-labs/FLUX.2-dev',
-    provider: 'together',
-    isNew: true,
-  },
-  {
-    id: 'flux2-flex',
-    name: 'FLUX.2 [flex]',
-    author: 'Black Forest Labs',
-    pricePerImage: 0.035,
-    modelId: 'black-forest-labs/FLUX.2-flex',
-    provider: 'together',
-    isNew: true,
-  },
-  {
-    id: 'flux2-pro',
-    name: 'FLUX.2 [pro]',
-    author: 'Black Forest Labs',
-    pricePerImage: 0.05,
-    modelId: 'black-forest-labs/FLUX.2-pro',
-    provider: 'together',
-    isNew: true,
-  },
-  {
-    id: 'flux2-max',
-    name: 'FLUX.2 [max]',
-    author: 'Black Forest Labs',
-    pricePerImage: 0.08,
-    modelId: 'black-forest-labs/FLUX.2-max',
-    provider: 'together',
-    isNew: true,
   },
 
-  // ── Community / Stability (Together AI) ──────────────────────
-  {
-    id: 'dreamshaper-xl',
-    name: 'DreamShaper XL',
-    author: 'Lykon',
-    pricePerImage: 0.001,
-    modelId: 'prompthero/openjourney',
-    provider: 'together',
-  },
-  {
-    id: 'juggernaut-xl',
-    name: 'Juggernaut XL',
-    author: 'RunDiffusion',
-    pricePerImage: 0.002,
-    modelId: 'RunDiffusion/Juggernaut-XL-v9',
-    provider: 'together',
-  },
+  // ── Stability AI ─────────────────────────────────────────────
   {
     id: 'sd-xl',
-    name: 'SD XL',
+    name: 'Stable Diffusion XL',
     author: 'Stability AI',
     pricePerImage: 0.002,
     modelId: 'stabilityai/stable-diffusion-xl-base-1.0',
@@ -134,54 +71,74 @@ export const IMAGE_MODELS: ImageModel[] = [
   },
   {
     id: 'sd3-medium',
-    name: 'SD3 Medium',
+    name: 'Stable Diffusion 3 Medium',
     author: 'Stability AI',
     pricePerImage: 0.002,
-    modelId: 'stabilityai/stable-diffusion-3-medium-diffusers',
-    provider: 'together',
-  },
-  {
-    id: 'juggernaut-pro',
-    name: 'Juggernaut Pro',
-    author: 'RunDiffusion',
-    pricePerImage: 0.005,
-    modelId: 'RunDiffusion/Juggernaut-Pro-v10',
+    modelId: 'stabilityai/stable-diffusion-3-medium',
     provider: 'together',
   },
 
-  // ── HiDream (Together AI) ────────────────────────────────────
+  // ── Lykon ────────────────────────────────────────────────────
+  {
+    id: 'dreamshaper',
+    name: 'DreamShaper',
+    author: 'Lykon',
+    pricePerImage: 0.001,
+    modelId: 'Lykon/DreamShaper',
+    provider: 'together',
+  },
+
+  // ── RunDiffusion ─────────────────────────────────────────────
+  {
+    id: 'juggernaut-lightning',
+    name: 'Juggernaut Lightning Flux',
+    author: 'RunDiffusion',
+    pricePerImage: 0.002,
+    modelId: 'RunDiffusion/Juggernaut-Lightning-Flux',
+    provider: 'together',
+  },
+  {
+    id: 'juggernaut-pro-flux',
+    name: 'Juggernaut Pro Flux',
+    author: 'RunDiffusion',
+    pricePerImage: 0.005,
+    modelId: 'RunDiffusion/Juggernaut-pro-flux',
+    provider: 'together',
+  },
+
+  // ── HiDream ──────────────────────────────────────────────────
   {
     id: 'hidream-fast',
-    name: 'HiDream Fast',
+    name: 'HiDream I1 Fast',
     author: 'HiDream',
     pricePerImage: 0.003,
-    modelId: 'hidream-ai/hidream-i1-fast',
+    modelId: 'HiDream-ai/HiDream-I1-Fast',
     provider: 'together',
   },
   {
     id: 'hidream-dev',
-    name: 'HiDream Dev',
+    name: 'HiDream I1 Dev',
     author: 'HiDream',
     pricePerImage: 0.005,
-    modelId: 'hidream-ai/hidream-i1-dev',
+    modelId: 'HiDream-ai/HiDream-I1-Dev',
     provider: 'together',
   },
   {
     id: 'hidream-full',
-    name: 'HiDream Full',
+    name: 'HiDream I1 Full',
     author: 'HiDream',
     pricePerImage: 0.009,
-    modelId: 'hidream-ai/hidream-i1-full',
+    modelId: 'HiDream-ai/HiDream-I1-Full',
     provider: 'together',
   },
 
-  // ── Qwen (Together AI) ───────────────────────────────────────
+  // ── Qwen ─────────────────────────────────────────────────────
   {
     id: 'qwen-image',
     name: 'Qwen Image',
     author: 'Qwen',
     pricePerImage: 0.006,
-    modelId: 'Qwen/Qwen2-VL-72B-Instruct',
+    modelId: 'Qwen/Qwen-Image',
     provider: 'together',
   },
   {
@@ -189,63 +146,120 @@ export const IMAGE_MODELS: ImageModel[] = [
     name: 'Qwen Image 2.0',
     author: 'Qwen',
     pricePerImage: 0.008,
-    modelId: 'Qwen/QwenImage-2.0',
-    provider: 'together',
-    isNew: true,
-  },
-  {
-    id: 'qwen-image-2-pro',
-    name: 'Qwen Image 2.0 Pro',
-    author: 'Qwen',
-    pricePerImage: 0.012,
-    modelId: 'Qwen/QwenImage-2.0-Pro',
+    modelId: 'Qwen/Qwen-Image-2.0',
     provider: 'together',
     isNew: true,
   },
 
-  // ── ByteDance (Together AI) ──────────────────────────────────
+  // ── ByteDance ─────────────────────────────────────────────────
   {
     id: 'seedream-30',
     name: 'Seedream 3.0',
     author: 'ByteDance',
     pricePerImage: 0.018,
-    modelId: 'ByteDance/Seedream-3.0',
+    modelId: 'ByteDance-Seed/Seedream-3.0',
     provider: 'together',
   },
   {
     id: 'seedream-40',
     name: 'Seedream 4.0',
     author: 'ByteDance',
-    pricePerImage: 0.03,
-    modelId: 'ByteDance/Seedream-4.0',
+    pricePerImage: 0.030,
+    modelId: 'ByteDance-Seed/Seedream-4.0',
     provider: 'together',
+    isNew: true,
   },
 
-  // ── Wan-AI (Together AI) ─────────────────────────────────────
+  // ── Wan-AI ────────────────────────────────────────────────────
   {
     id: 'wan-image-26',
     name: 'Wan 2.6 Image',
     author: 'Wan-AI',
     pricePerImage: 0.008,
-    modelId: 'Wan-AI/Wan2.6-Image',
+    modelId: 'Wan-AI/Wan-2.6-Image',
     provider: 'together',
     isNew: true,
   },
 
-  // ── Ideogram (Together AI) ───────────────────────────────────
+  // ── Ideogram ──────────────────────────────────────────────────
   {
     id: 'ideogram-30',
     name: 'Ideogram 3.0',
     author: 'Ideogram',
-    pricePerImage: 0.06,
-    modelId: 'ideogram-ai/ideogram-v3',
+    pricePerImage: 0.060,
+    modelId: 'ideogram/ideogram-3.0',
     provider: 'together',
   },
 
-  // ── OpenAI ───────────────────────────────────────────────────
+  // ── Google (via Together AI) ──────────────────────────────────
+  {
+    id: 'google-imagen-40-fast',
+    name: 'Imagen 4.0 Fast',
+    author: 'Google',
+    pricePerImage: 0.020,
+    modelId: 'google/imagen-4.0-fast',
+    provider: 'together',
+    isNew: true,
+  },
+  {
+    id: 'google-flash-image-25',
+    name: 'Flash Image 2.5',
+    author: 'Google',
+    pricePerImage: 0.039,
+    modelId: 'google/flash-image-2.5',
+    provider: 'together',
+    isNew: true,
+  },
+  {
+    id: 'google-flash-image-31',
+    name: 'Flash Image 3.1',
+    author: 'Google',
+    pricePerImage: 0.039,
+    modelId: 'google/flash-image-3.1',
+    provider: 'together',
+    isNew: true,
+  },
+  {
+    id: 'google-imagen-40-preview',
+    name: 'Imagen 4.0 Preview',
+    author: 'Google',
+    pricePerImage: 0.040,
+    modelId: 'google/imagen-4.0-preview',
+    provider: 'together',
+    isNew: true,
+  },
+  {
+    id: 'google-imagen-40-ultra',
+    name: 'Imagen 4.0 Ultra',
+    author: 'Google',
+    pricePerImage: 0.060,
+    modelId: 'google/imagen-4.0-ultra',
+    provider: 'together',
+    isNew: true,
+  },
+  {
+    id: 'google-gemini-3-pro-image',
+    name: 'Gemini 3 Pro Image',
+    author: 'Google',
+    pricePerImage: 0.060,
+    modelId: 'google/gemini-3-pro-image',
+    provider: 'together',
+    isNew: true,
+  },
+
+  // ── OpenAI ────────────────────────────────────────────────────
+  {
+    id: 'gpt-image-15-together',
+    name: 'GPT Image 1.5',
+    author: 'OpenAI',
+    pricePerImage: 0.04,
+    modelId: 'openai/gpt-image-1.5',
+    provider: 'together',
+    isNew: true,
+  },
   {
     id: 'gpt-image-15',
-    name: 'GPT Image 1.5',
+    name: 'GPT Image 1.5 (Direct)',
     author: 'OpenAI',
     pricePerImage: 0.04,
     modelId: 'gpt-image-1',
@@ -268,62 +282,30 @@ export const IMAGE_MODELS: ImageModel[] = [
     modelId: 'dall-e-3-hd',
     provider: 'openai',
   },
-
-  // ── Google ───────────────────────────────────────────────────
-  {
-    id: 'gemini-flash-image-25',
-    name: 'Gemini Flash Image 2.5',
-    author: 'Google',
-    pricePerImage: 0.039,
-    modelId: 'gemini-2.0-flash-preview-image-generation',
-    provider: 'google',
-    isNew: true,
-  },
-  {
-    id: 'gemini-3-nano-image',
-    name: 'Gemini 3 Image',
-    author: 'Google',
-    pricePerImage: 0.06,
-    modelId: 'gemini-3.0-nano-image-generation',
-    provider: 'google',
-    isNew: true,
-  },
-  {
-    id: 'gemini-31-flash-image',
-    name: 'Gemini 3.1 Flash Image (Nano Banana 2)',
-    author: 'Google',
-    pricePerImage: 0.04,
-    modelId: 'gemini-3.1-flash-image-generation',
-    provider: 'google',
-    isNew: true,
-  },
-
 ]
 
 export const COMPANY_COLORS: Record<string, string> = {
   'Black Forest Labs': '#7c3aed',
-  'Lykon': '#0ea5e9',
-  'RunDiffusion': '#f59e0b',
-  'Stability AI': '#10b981',
-  'HiDream': '#ec4899',
-  'Qwen': '#6366f1',
-  'ByteDance': '#ef4444',
-  'Wan-AI': '#14b8a6',
-  'Ideogram': '#f97316',
-  'OpenAI': '#10a37f',
-  'Google': '#4285f4',
+  'Lykon':            '#0ea5e9',
+  'RunDiffusion':     '#f59e0b',
+  'Stability AI':     '#10b981',
+  'HiDream':          '#ec4899',
+  'Qwen':             '#6366f1',
+  'ByteDance':        '#ef4444',
+  'Wan-AI':           '#14b8a6',
+  'Ideogram':         '#f97316',
+  'Google':           '#4285f4',
+  'OpenAI':           '#10a37f',
 }
 
 export const PROVIDER_LABELS: Record<Provider, string> = {
   together: 'TOGETHER_API_KEY',
-  openai: 'OPENAI_API_KEY',
-  google: 'GOOGLE_API_KEY',
+  openai:   'OPENAI_API_KEY',
 }
 
 export const PROVIDER_META: Record<Provider, { label: string; color: string }> = {
   together: { label: 'Together AI', color: '#7c3aed' },
   openai:   { label: 'OpenAI',      color: '#10a37f' },
-  google:   { label: 'Google',      color: '#4285f4' },
 }
 
 export interface ProviderGroup {
@@ -331,16 +313,14 @@ export interface ProviderGroup {
   label: string
   color: string
   apiKeyLabel: string
-  /** sub-groups by author (only relevant for Together AI) */
   companies: { name: string; models: ImageModel[] }[]
 }
 
 export function groupByProvider(models: ImageModel[]): ProviderGroup[] {
-  const order: Provider[] = ['together', 'openai', 'google']
+  const order: Provider[] = ['together', 'openai']
   return order
     .map((p) => {
       const pModels = models.filter((m) => m.provider === p)
-      // sub-group by author
       const companyMap = new Map<string, ImageModel[]>()
       for (const m of pModels) {
         if (!companyMap.has(m.author)) companyMap.set(m.author, [])
@@ -357,7 +337,6 @@ export function groupByProvider(models: ImageModel[]): ProviderGroup[] {
     .filter((g) => g.companies.length > 0)
 }
 
-// kept for compat but not used in main UI
 export function groupByCompany(models: ImageModel[]): CompanyGroup[] {
   const map = new Map<string, ImageModel[]>()
   for (const model of models) {

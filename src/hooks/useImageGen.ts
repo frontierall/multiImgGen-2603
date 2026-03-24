@@ -11,7 +11,6 @@ export interface GeneratedResult {
 export interface ApiKeys {
   together: string
   openai: string
-  google: string
 }
 
 interface ModelRequest {
@@ -78,43 +77,6 @@ async function generateOpenAI(
   return { modelId, modelName, url }
 }
 
-// ── Google Gemini ─────────────────────────────────────────────
-async function generateGoogle(
-  apiKey: string,
-  modelId: string,
-  modelName: string,
-  prompt: string,
-): Promise<GeneratedResult> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
-      }),
-    },
-  )
-  if (!res.ok) {
-    const txt = await res.text()
-    let msg = `${res.status}`
-    try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
-    return { modelId, modelName, url: '', error: msg }
-  }
-  const data = await res.json()
-  const parts = data?.candidates?.[0]?.content?.parts ?? []
-  const imgPart = parts.find((p: { inlineData?: { mimeType?: string; data?: string } }) =>
-    p.inlineData?.mimeType?.startsWith('image'),
-  )
-  if (!imgPart?.inlineData?.data)
-    return { modelId, modelName, url: '', error: '이미지 데이터 없음' }
-  return {
-    modelId, modelName,
-    url: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`,
-  }
-}
-
 // ── Main hook ─────────────────────────────────────────────────
 export function useImageGen(apiKeys: ApiKeys) {
   const [loading, setLoading] = useState(false)
@@ -132,10 +94,8 @@ export function useImageGen(apiKeys: ApiKeys) {
 
     const needsTogether = models.some((m) => m.provider === 'together')
     const needsOpenAI   = models.some((m) => m.provider === 'openai')
-    const needsGoogle   = models.some((m) => m.provider === 'google')
     if (needsTogether && !apiKeys.together.trim()) { setError('Together AI API Key를 입력해주세요.'); return }
     if (needsOpenAI   && !apiKeys.openai.trim())   { setError('OpenAI API Key를 입력해주세요.'); return }
-    if (needsGoogle   && !apiKeys.google.trim())   { setError('Google API Key를 입력해주세요.'); return }
 
     setError(null)
     setLoading(true)
@@ -143,7 +103,6 @@ export function useImageGen(apiKeys: ApiKeys) {
 
     const tasks = models.map((m) => {
       if (m.provider === 'openai') return generateOpenAI(apiKeys.openai, m.modelId, m.name, prompt, width, height)
-      if (m.provider === 'google') return generateGoogle(apiKeys.google, m.modelId, m.name, prompt)
       return generateTogether(apiKeys.together, m.modelId, m.name, prompt, width, height, steps)
     })
 
