@@ -146,10 +146,12 @@ export default function PromptPanel({
           )}
           <button
             onClick={onGenerate}
-            disabled={loading || selectedCount === 0 || isExhausted}
+            disabled={loading || selectedCount === 0}
             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium transition-all ${
-              loading || selectedCount === 0 || isExhausted
+              loading || selectedCount === 0
                 ? 'bg-[#2a2d3a] text-slate-600 cursor-not-allowed'
+                : isExhausted
+                ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-500/20'
                 : 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20'
             }`}
           >
@@ -157,7 +159,7 @@ export default function PromptPanel({
             {loading
               ? '생성 중...'
               : isExhausted
-              ? '한도 초과 (10장 소진)'
+              ? '🔒 한도 소진 — 암호로 충전'
               : selectedCount === 0
               ? '모델 선택 필요'
               : `${Math.min(selectedCount, remaining)}개 모델로 생성`}
