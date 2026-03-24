@@ -6,7 +6,10 @@
       "Bash(npm run:*)",
       "WebFetch(domain:api.together.ai)",
       "WebFetch(domain:docs.together.ai)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

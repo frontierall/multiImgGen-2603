@@ -1,0 +1,3096 @@
+  ✻ Voice mode is now available · /voice to enable
+  ⎿  Wrote 216 lines to README.md
+      1 # Multi Image Generator
+      2
+      3 Together AI · OpenAI · Google 3개 프로바이더의 이미지 생성 모델을 한 화
+        면에서 비교 생성할 수 있는 웹 앱입니다.
+      4
+      5 **Tech Stack:** Vite · React 18 · TypeScript · Tailwind CSS
+      6
+      7 ---
+      8
+      9 ## 버전 히스토리
+     … +206 lines (ctrl+o to expand)
+
+⏺ 완료입니다. 버전별 구성:
+
+  ┌──────┬─────────────────────────────────────────────────────┐
+  │ 버전 │                      핵심 내용                      │
+  ├──────┼─────────────────────────────────────────────────────┤
+  │ v0.1 │ 기본 구조 · Together AI 단일 프로바이더             │
+  ├──────┼─────────────────────────────────────────────────────┤
+  │ v0.2 │ OpenAI · Google 추가 · 샘플 프롬프트                │
+  ├──────┼─────────────────────────────────────────────────────┤
+  │ v0.3 │ 10장 쿼터 제한 · 잔여량 바                          │
+  ├──────┼─────────────────────────────────────────────────────┤
+  │ v0.4 │ 암호(1234) 입력으로 쿼터 해제                       │
+  ├──────┼─────────────────────────────────────────────────────┤
+  │ v0.5 │ sessionStorage 보안 · 3대 카테고리 · 선택 상단 표시 │
+  └──────┴─────────────────────────────────────────────────────┘
+
+  각 버전마다 주요 기능 목록 + 파일 구조 변경 을 함께 정리했고, 하단에 전체 컴포넌트
+  트리와 지원 모델 전체 목록 + 가격표도 포함했습니다.
+
+✻ Sautéed for 1m 10s
+
+❯ Google Veo 2.0, 3.0은 안되는거니? https://api.together.ai/models?input=IMAGE여기     
+페이지에는 있는데..                                                                    
+
+⏺ Explore(Fetch Together AI models page)
+  ⎿  Done (1 tool use · 13.8k tokens · 15s)
+  (ctrl+o to expand)
+
+⏺ Explore(Check Together AI video API docs)
+  ⎿  Done (6 tool uses · 16.3k tokens · 37s)
+  (ctrl+o to expand)
+
+⏺ Together AI에 video generation API(/v2/videos)가 있고, Veo / Kling / Sora 모두
+  지원합니다. 현재 앱이 이미지 전용이라 빠진 것입니다. 비디오 모델 + 비동기 폴링 +
+  비디오 플레이어까지 추가하겠습니다.
+
+  Read 2 files (ctrl+o to expand)
+
+❯ Google 3.1 Flash Image만 적으면 살마들이 모르더라. ()ㄴ넣어서 Nano Banana 2라고      
+넣어주세요.                                                                            
+
+⏺ 4개 파일 동시 수정합니다.
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Added 3 lines, removed 1 line
+       1  export type Provider = 'together' | 'openai' | 'google'
+       2 +export type MediaType = 'image' | 'video'
+       3
+       4  export interface ImageModel {
+       5    id: string
+       6    name: string
+       7    author: string
+       7 -  pricePerImage: number // USD
+       8 +  pricePerImage: number // USD (per image or per video)
+       9    modelId: string
+      10    provider: Provider
+      11 +  mediaType: MediaType
+      12    description?: string
+      13    isNew?: boolean
+      14  }
+
+⏺ 모든 기존 이미지 모델에 mediaType: 'image' 추가 + Gemini 3.1 이름 수정 + 비디오 모델
+  추가:
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ mediaType 를 optional로 변경 (기존 모델들은 기본값 'image'로 처리):
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Added 1 line, removed 1 line
+       8    pricePerImage: number // USD (per image or per video)
+       9    modelId: string
+      10    provider: Provider
+      11 -  mediaType: MediaType
+      11 +  mediaType?: MediaType  // defaults to 'image'
+      12    description?: string
+      13    isNew?: boolean
+      14  }
+
+⏺ Gemini 3.1 이름 수정 + 비디오 모델 추가 + Google Gemini 이름 수정:
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Added 133 lines, removed 1 line
+      292    },
+      293    {
+      294      id: 'gemini-31-flash-image',
+      295 -    name: 'Gemini 3.1 Flash Image',
+      295 +    name: 'Gemini 3.1 Flash Image (Nano Banana 2)',
+      296      author: 'Google',
+      297      pricePerImage: 0.04,
+      298      modelId: 'gemini-3.1-flash-image-generation',
+      299      provider: 'google',
+      300      isNew: true,
+      301    },
+      302 +
+      303 +  // ── Video Models (Together AI) ───────────────────────────────
+      304 +  // Google Veo
+      305 +  {
+      306 +    id: 'veo-20',
+      307 +    name: 'Google Veo 2.0',
+      308 +    author: 'Google',
+      309 +    pricePerImage: 0.50,
+      310 +    modelId: 'google/veo-2.0',
+      311 +    provider: 'together',
+      312 +    mediaType: 'video',
+      313 +    isNew: true,
+      314 +  },
+      315 +  {
+      316 +    id: 'veo-30-fast',
+      317 +    name: 'Google Veo 3.0 Fast',
+      318 +    author: 'Google',
+      319 +    pricePerImage: 0.75,
+      320 +    modelId: 'google/veo-3.0-fast',
+      321 +    provider: 'together',
+      322 +    mediaType: 'video',
+      323 +    isNew: true,
+      324 +  },
+      325 +  {
+      326 +    id: 'veo-30-fast-audio',
+      327 +    name: 'Google Veo 3.0 Fast + Audio',
+      328 +    author: 'Google',
+      329 +    pricePerImage: 0.90,
+      330 +    modelId: 'google/veo-3.0-fast-audio',
+      331 +    provider: 'together',
+      332 +    mediaType: 'video',
+      333 +    isNew: true,
+      334 +  },
+      335 +  {
+      336 +    id: 'veo-30',
+      337 +    name: 'Google Veo 3.0',
+      338 +    author: 'Google',
+      339 +    pricePerImage: 1.80,
+      340 +    modelId: 'google/veo-3.0',
+      341 +    provider: 'together',
+      342 +    mediaType: 'video',
+      343 +    isNew: true,
+      344 +  },
+      345 +  {
+      346 +    id: 'veo-30-audio',
+      347 +    name: 'Google Veo 3.0 + Audio',
+      348 +    author: 'Google',
+      349 +    pricePerImage: 2.40,
+      350 +    modelId: 'google/veo-3.0-audio',
+      351 +    provider: 'together',
+      352 +    mediaType: 'video',
+      353 +    isNew: true,
+      354 +  },
+      355 +  // Kling (kwaivgI)
+      356 +  {
+      357 +    id: 'kling-16-standard',
+      358 +    name: 'Kling 1.6 Standard',
+      359 +    author: 'kwaivgI',
+      360 +    pricePerImage: 0.22,
+      361 +    modelId: 'kwaivgI/kling-1.6-standard',
+      362 +    provider: 'together',
+      363 +    mediaType: 'video',
+      364 +  },
+      365 +  {
+      366 +    id: 'kling-16-pro',
+      367 +    name: 'Kling 1.6 Pro',
+      368 +    author: 'kwaivgI',
+      369 +    pricePerImage: 0.28,
+      370 +    modelId: 'kwaivgI/kling-1.6-pro',
+      371 +    provider: 'together',
+      372 +    mediaType: 'video',
+      373 +  },
+      374 +  {
+      375 +    id: 'kling-20-master',
+      376 +    name: 'Kling 2.0 Master',
+      377 +    author: 'kwaivgI',
+      378 +    pricePerImage: 0.45,
+      379 +    modelId: 'kwaivgI/kling-2.0-master',
+      380 +    provider: 'together',
+      381 +    mediaType: 'video',
+      382 +  },
+      383 +  {
+      384 +    id: 'kling-21-standard',
+      385 +    name: 'Kling 2.1 Standard',
+      386 +    author: 'kwaivgI',
+      387 +    pricePerImage: 0.30,
+      388 +    modelId: 'kwaivgI/kling-2.1-standard',
+      389 +    provider: 'together',
+      390 +    mediaType: 'video',
+      391 +    isNew: true,
+      392 +  },
+      393 +  {
+      394 +    id: 'kling-21-pro',
+      395 +    name: 'Kling 2.1 Pro',
+      396 +    author: 'kwaivgI',
+      397 +    pricePerImage: 0.45,
+      398 +    modelId: 'kwaivgI/kling-2.1-pro',
+      399 +    provider: 'together',
+      400 +    mediaType: 'video',
+      401 +    isNew: true,
+      402 +  },
+      403 +  {
+      404 +    id: 'kling-21-master',
+      405 +    name: 'Kling 2.1 Master',
+      406 +    author: 'kwaivgI',
+      407 +    pricePerImage: 0.80,
+      408 +    modelId: 'kwaivgI/kling-2.1-master',
+      409 +    provider: 'together',
+      410 +    mediaType: 'video',
+      411 +    isNew: true,
+      412 +  },
+      413 +  // OpenAI Sora (via Together AI)
+      414 +  {
+      415 +    id: 'sora-2',
+      416 +    name: 'Sora 2',
+      417 +    author: 'OpenAI (via Together)',
+      418 +    pricePerImage: 1.50,
+      419 +    modelId: 'openai/sora-2',
+      420 +    provider: 'together',
+      421 +    mediaType: 'video',
+      422 +    isNew: true,
+      423 +  },
+      424 +  {
+      425 +    id: 'sora-2-pro',
+      426 +    name: 'Sora 2 Pro',
+      427 +    author: 'OpenAI (via Together)',
+      428 +    pricePerImage: 2.00,
+      429 +    modelId: 'openai/sora-2-pro',
+      430 +    provider: 'together',
+      431 +    mediaType: 'video',
+      432 +    isNew: true,
+      433 +  },
+      434  ]
+      435
+      436  export const COMPANY_COLORS: Record<string, string> = {
+
+⏺ 회사 색상에 kwaivgI 추가:
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Added 2 lines
+      444    'Wan-AI': '#14b8a6',
+      445    'Ideogram': '#f97316',
+      446    'OpenAI': '#10a37f',
+      447 +  'OpenAI (via Together)': '#10a37f',
+      448    'Google': '#4285f4',
+      449 +  'kwaivgI': '#ff6b35',
+      450  }
+      451
+      452  export const PROVIDER_LABELS: Record<Provider, string> = {
+
+⏺ 이제 useImageGen.ts에 비디오 비동기 폴링 + 점진적 결과 업데이트 추가:
+
+⏺ Write(src/hooks/useImageGen.ts)
+  ⎿  Added 128 lines, removed 47 lines
+       1  import { useState } from 'react'
+       2 -import type { Provider } from '../data/imageModels'
+       2 +import type { Provider, MediaType } from '../data/imageModels'
+       3
+       4 -export interface GeneratedImage {
+       4 +export interface GeneratedResult {
+       5    modelId: string
+       6    modelName: string
+       7    url: string
+       8 +  mediaType: MediaType
+       9    error?: string
+      10 +  pending?: boolean  // still generating (video polling in progress)
+      11  }
+      12
+      13  export interface ApiKeys {
+     ...
+      20    modelId: string
+      21    name: string
+      22    provider: Provider
+      23 +  mediaType?: MediaType
+      24  }
+      25
+      23 -// ── Together AI ───────────────────────────────────────────────
+      24 -async function generateTogether(
+      26 +const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+      27 +
+      28 +// ── Together AI — Image ───────────────────────────────────────
+      29 +async function generateImageTogether(
+      30    apiKey: string,
+      31    modelId: string,
+      32    modelName: string,
+     ...
+      34    width: number,
+      35    height: number,
+      36    steps: number,
+      32 -): Promise<GeneratedImage> {
+      37 +): Promise<GeneratedResult> {
+      38    const res = await fetch('https://api.together.xyz/v1/images/generati
+          ons', {
+      39      method: 'POST',
+      40      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'app
+          lication/json' },
+     ...
+       44      const txt = await res.text()
+       45      let msg = `${res.status}`
+       46      try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+       42 -    return { modelId, modelName, url: '', error: msg }
+       47 +    return { modelId, modelName, url: '', mediaType: 'image', error:
+          +msg }
+       48    }
+       49    const data = await res.json()
+       50    const b64 = data?.data?.[0]?.b64_json as string | undefined
+       51    const url = b64 ? `data:image/png;base64,${b64}` : (data?.data?.[0]
+           ?.url ?? '')
+       47 -  return { modelId, modelName, url }
+       52 +  return { modelId, modelName, url, mediaType: 'image' }
+       53  }
+       54
+       55 +// ── Together AI — Video (async poll) ─────────────────────────
+       56 +async function generateVideoTogether(
+       57 +  apiKey: string,
+       58 +  modelId: string,
+       59 +  modelName: string,
+       60 +  prompt: string,
+       61 +  onUpdate: (r: GeneratedResult) => void,
+       62 +): Promise<GeneratedResult> {
+       63 +  // 1. Submit job
+       64 +  const res = await fetch('https://api.together.xyz/v2/videos', {
+       65 +    method: 'POST',
+       66 +    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'ap
+          +plication/json' },
+       67 +    body: JSON.stringify({
+       68 +      model: modelId,
+       69 +      prompt,
+       70 +      width: 1280,
+       71 +      height: 720,
+       72 +      seconds: '5',
+       73 +      fps: 24,
+       74 +    }),
+       75 +  })
+       76 +  if (!res.ok) {
+       77 +    const txt = await res.text()
+       78 +    let msg = `${res.status}`
+       79 +    try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+       80 +    return { modelId, modelName, url: '', mediaType: 'video', error:
+          +msg }
+       81 +  }
+       82 +  const job = await res.json()
+       83 +  const jobId: string = job.id
+       84 +
+       85 +  // 2. Poll every 5s (max 5 min = 60 attempts)
+       86 +  for (let i = 0; i < 60; i++) {
+       87 +    await sleep(5000)
+       88 +    try {
+       89 +      const poll = await fetch(`https://api.together.xyz/v2/videos/${
+          +jobId}`, {
+       90 +        headers: { Authorization: `Bearer ${apiKey}` },
+       91 +      })
+       92 +      if (!poll.ok) continue
+       93 +      const data = await poll.json()
+       94 +
+       95 +      if (data.status === 'completed') {
+       96 +        const result: GeneratedResult = {
+       97 +          modelId, modelName,
+       98 +          url: data.outputs?.video_url ?? '',
+       99 +          mediaType: 'video',
+      100 +        }
+      101 +        onUpdate(result)
+      102 +        return result
+      103 +      }
+      104 +      if (data.status === 'failed') {
+      105 +        return { modelId, modelName, url: '', mediaType: 'video', err
+          +or: '비디오 생성 실패' }
+      106 +      }
+      107 +      // in_progress — update pending state so UI can show elapsed ti
+          +me
+      108 +      onUpdate({ modelId, modelName, url: '', mediaType: 'video', pen
+          +ding: true })
+      109 +    } catch {}
+      110 +  }
+      111 +  return { modelId, modelName, url: '', mediaType: 'video', error: '
+          +시간 초과 (5분)' }
+      112 +}
+      113 +
+      114  // ── OpenAI ────────────────────────────────────────────────────
+      115  async function generateOpenAI(
+      116    apiKey: string,
+     ...
+      119    prompt: string,
+      120    width: number,
+      121    height: number,
+       58 -): Promise<GeneratedImage> {
+       59 -  // DALL·E 3 supports specific sizes only
+      122 +): Promise<GeneratedResult> {
+      123    const size = modelId.startsWith('dall-e')
+      124      ? width >= height ? '1024x1024' : '1024x1792'
+      125      : `${width}x${height}`
+       63 - 
+      126    const quality = modelId.endsWith('-hd') ? 'hd' : 'standard'
+      127    const realModelId = modelId.replace(/-hd$/, '')
+       66 - 
+      128    const res = await fetch('https://api.openai.com/v1/images/generatio
+           ns', {
+      129      method: 'POST',
+      130      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'ap
+           plication/json' },
+       70 -    body: JSON.stringify({
+       71 -      model: realModelId,
+       72 -      prompt,
+       73 -      n: 1,
+       74 -      size,
+       75 -      quality,
+       76 -      response_format: 'b64_json',
+       77 -    }),
+      131 +    body: JSON.stringify({ model: realModelId, prompt, n: 1, size, qu
+          +ality, response_format: 'b64_json' }),
+      132    })
+      133    if (!res.ok) {
+      134      const txt = await res.text()
+      135      let msg = `${res.status}`
+      136      try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+       83 -    return { modelId, modelName, url: '', error: msg }
+      137 +    return { modelId, modelName, url: '', mediaType: 'image', error:
+          +msg }
+      138    }
+      139    const data = await res.json()
+      140    const b64 = data?.data?.[0]?.b64_json as string | undefined
+      141    const url = b64 ? `data:image/png;base64,${b64}` : (data?.data?.[0]
+           ?.url ?? '')
+       88 -  return { modelId, modelName, url }
+      142 +  return { modelId, modelName, url, mediaType: 'image' }
+      143  }
+      144
+      145  // ── Google Gemini ─────────────────────────────────────────────
+     ...
+      148    modelId: string,
+      149    modelName: string,
+      150    prompt: string,
+       97 -): Promise<GeneratedImage> {
+      151 +): Promise<GeneratedResult> {
+      152    const res = await fetch(
+      153      `https://generativelanguage.googleapis.com/v1beta/models/${modelI
+           d}:generateContent?key=${apiKey}`,
+      154      {
+     ...
+      164      const txt = await res.text()
+      165      let msg = `${res.status}`
+      166      try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+      113 -    return { modelId, modelName, url: '', error: msg }
+      167 +    return { modelId, modelName, url: '', mediaType: 'image', error:
+          +msg }
+      168    }
+      169    const data = await res.json()
+      170    const parts = data?.candidates?.[0]?.content?.parts ?? []
+      117 -  const imgPart = parts.find((p: { inlineData?: { mimeType?: string;
+          -data?: string } }) => p.inlineData?.mimeType?.startsWith('image'))
+      118 -  if (!imgPart?.inlineData?.data) {
+      119 -    return { modelId, modelName, url: '', error: '이미지 데이터 없음'
+          - }
+      171 +  const imgPart = parts.find((p: { inlineData?: { mimeType?: string;
+          +data?: string } }) =>
+      172 +    p.inlineData?.mimeType?.startsWith('image'),
+      173 +  )
+      174 +  if (!imgPart?.inlineData?.data)
+      175 +    return { modelId, modelName, url: '', mediaType: 'image', error:
+          +'이미지 데이터 없음' }
+      176 +  return {
+      177 +    modelId, modelName,
+      178 +    url: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inline
+          +Data.data}`,
+      179 +    mediaType: 'image',
+      180    }
+      121 -  const url = `data:${imgPart.inlineData.mimeType};base64,${imgPart.i
+          -nlineData.data}`
+      122 -  return { modelId, modelName, url }
+      181  }
+      182
+      183  // ── Main hook ─────────────────────────────────────────────────
+      184  export function useImageGen(apiKeys: ApiKeys) {
+      185    const [loading, setLoading] = useState(false)
+      128 -  const [results, setResults] = useState<GeneratedImage[]>([])
+      186 +  const [results, setResults] = useState<GeneratedResult[]>([])
+      187    const [error, setError] = useState<string | null>(null)
+      188
+      189 +  function updateResult(result: GeneratedResult) {
+      190 +    setResults((prev) =>
+      191 +      prev.map((r) => (r.modelId === result.modelId ? result : r)),
+      192 +    )
+      193 +  }
+      194 +
+      195    async function generateAll(
+      196      models: ModelRequest[],
+      197      prompt: string,
+     ...
+      201    ) {
+      202      if (!prompt.trim()) { setError('프롬프트를 입력해주세요.'); retur
+           n }
+      203
+      140 -    // Check required keys
+      204 +    const hasVideo    = models.some((m) => m.mediaType === 'video')
+      205      const needsTogether = models.some((m) => m.provider === 'together
+           ')
+      142 -    const needsOpenAI = models.some((m) => m.provider === 'openai')
+      143 -    const needsGoogle = models.some((m) => m.provider === 'google')
+      144 -    if (needsTogether && !apiKeys.together.trim()) { setError('Togeth
+          -er AI API Key를 입력해주세요.'); return }
+      145 -    if (needsOpenAI && !apiKeys.openai.trim()) { setError('OpenAI API
+          - Key를 입력해주세요.'); return }
+      146 -    if (needsGoogle && !apiKeys.google.trim()) { setError('Google API
+          - Key를 입력해주세요.'); return }
+      206 +    const needsOpenAI   = models.some((m) => m.provider === 'openai')
+      207 +    const needsGoogle   = models.some((m) => m.provider === 'google')
+      208 +    if ((needsTogether || hasVideo) && !apiKeys.together.trim()) { se
+          +tError('Together AI API Key를 입력해주세요.'); return }
+      209 +    if (needsOpenAI  && !apiKeys.openai.trim())   { setError('OpenAI
+          +API Key를 입력해주세요.'); return }
+      210 +    if (needsGoogle  && !apiKeys.google.trim())   { setError('Google
+          +API Key를 입력해주세요.'); return }
+      211
+      212      setError(null)
+      213      setLoading(true)
+      150 -    setResults([])
+      214
+      215 +    // Placeholders so the UI shows spinners immediately
+      216 +    setResults(
+      217 +      models.map((m) => ({
+      218 +        modelId: m.modelId,
+      219 +        modelName: m.name,
+      220 +        url: '',
+      221 +        mediaType: m.mediaType ?? 'image',
+      222 +        pending: true,
+      223 +      })),
+      224 +    )
+      225 +
+      226      const tasks = models.map((m) => {
+      153 -      if (m.provider === 'openai') return generateOpenAI(apiKeys.open
+          -ai, m.modelId, m.name, prompt, width, height)
+      154 -      if (m.provider === 'google') return generateGoogle(apiKeys.goog
+          -le, m.modelId, m.name, prompt)
+      155 -      return generateTogether(apiKeys.together, m.modelId, m.name, pr
+          -ompt, width, height, steps)
+      156 -    })
+      227 +      const isVideo = m.mediaType === 'video'
+      228
+      158 -    const settled = await Promise.allSettled(tasks)
+      159 -    const imgs: GeneratedImage[] = settled.map((r, i) =>
+      160 -      r.status === 'fulfilled'
+      161 -        ? r.value
+      162 -        : { modelId: models[i].modelId, modelName: models[i].name, ur
+          -l: '', error: String((r as PromiseRejectedResult).reason) },
+      163 -    )
+      229 +      let task: Promise<GeneratedResult>
+      230 +      if (isVideo) {
+      231 +        task = generateVideoTogether(apiKeys.together, m.modelId, m.n
+          +ame, prompt, updateResult)
+      232 +      } else if (m.provider === 'openai') {
+      233 +        task = generateOpenAI(apiKeys.openai, m.modelId, m.name, prom
+          +pt, width, height)
+      234 +      } else if (m.provider === 'google') {
+      235 +        task = generateGoogle(apiKeys.google, m.modelId, m.name, prom
+          +pt)
+      236 +      } else {
+      237 +        task = generateImageTogether(apiKeys.together, m.modelId, m.n
+          +ame, prompt, width, height, steps)
+      238 +      }
+      239
+      165 -    setResults(imgs)
+      240 +      // Update result as soon as this model finishes
+      241 +      return task.then((result) => updateResult(result)).catch(() =>
+          +{
+      242 +        updateResult({ modelId: m.modelId, modelName: m.name, url: ''
+          +, mediaType: m.mediaType ?? 'image', error: '알 수 없는 오류' })
+      243 +      })
+      244 +    })
+      245 +
+      246 +    await Promise.allSettled(tasks)
+      247      setLoading(false)
+      248    }
+      249
+
+⏺ ModelCard에 VIDEO 뱃지 + 가격 단위 분기:
+
+⏺ Write(src/components/ModelCard.tsx)
+  ⎿  Added 18 lines, removed 8 lines
+       7  }
+       8
+       9  export default function ModelCard({ model, selected, onToggle }: Props
+          ) {
+      10 +  const isVideo = model.mediaType === 'video'
+      11 +
+      12    return (
+      13      <button
+      14        onClick={() => onToggle(model.id)}
+     ...
+      35          )}
+      36        </div>
+      37
+      36 -      {/* new badge */}
+      37 -      {model.isNew && (
+      38 -        <span className="absolute top-2 right-2 text-[10px] px-1.5 py-
+         -0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium">
+      39 -          NEW
+      40 -        </span>
+      41 -      )}
+      38 +      {/* top-right badges */}
+      39 +      <div className="absolute top-2 right-2 flex items-center gap-1">
+      40 +        {isVideo && (
+      41 +          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-ro
+         +se-500/20 text-rose-400 font-bold tracking-wide">
+      42 +            VIDEO
+      43 +          </span>
+      44 +        )}
+      45 +        {model.isNew && (
+      46 +          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-em
+         +erald-500/20 text-emerald-400 font-medium">
+      47 +            NEW
+      48 +          </span>
+      49 +        )}
+      50 +      </div>
+      51
+      43 -      <span className="pl-6 text-sm font-medium text-slate-100 leading
+         --tight">
+      52 +      <span className="pl-6 text-sm font-medium text-slate-100 leading
+         +-tight pr-1">
+      53          {model.name}
+      54        </span>
+      55        <span className={`pl-6 text-xs font-semibold ${selected ? 'text-
+          violet-400' : 'text-slate-400'}`}>
+      47 -        ${model.pricePerImage.toFixed(3)}
+      56 +        ${model.pricePerImage.toFixed(isVideo ? 2 : 3)}
+      57 +        <span className="font-normal text-slate-500"> /{isVideo ? '영
+         +상' : '장'}</span>
+      58        </span>
+      59      </button>
+      60    )
+
+⏺ ResultsPanel에 비디오 플레이어 + 점진적 로딩 표시:
+
+⏺ Write(src/components/ResultsPanel.tsx)
+  ⎿  Added 118 lines, removed 59 lines
+      1 -import { Download, AlertCircle, Loader2 } from 'lucide-react'
+      2 -import type { GeneratedImage } from '../hooks/useTogetherAI'
+      1 +import { Download, AlertCircle, Loader2, Film } from 'lucide-react'
+      2 +import type { GeneratedResult } from '../hooks/useImageGen'
+      3
+      4  interface Props {
+      5 -  results: GeneratedImage[]
+      5 +  results: GeneratedResult[]
+      6    loading: boolean
+      7    selectedCount: number
+      8  }
+     ...
+       10  export default function ResultsPanel({ results, loading, selectedCoun
+           t }: Props) {
+       11    if (!loading && results.length === 0) return null
+       12
+       13 -  function downloadImage(img: GeneratedImage) {
+       14 -    if (!img.url) return
+       13 +  function download(r: GeneratedResult) {
+       14 +    if (!r.url) return
+       15      const a = document.createElement('a')
+       16 -    a.href = img.url
+       17 -    a.download = `${img.modelName.replace(/\s+/g, '_')}.png`
+       16 +    a.href = r.url
+       17 +    a.download = `${r.modelName.replace(/\s+/g, '_')}.${r.mediaType =
+          +== 'video' ? 'mp4' : 'png'}`
+       18      a.click()
+       19    }
+       20
+       21 +  // Show placeholders before any results arrive
+       22 +  const displayItems: GeneratedResult[] =
+       23 +    results.length > 0
+       24 +      ? results
+       25 +      : loading
+       26 +      ? Array.from({ length: selectedCount }, (_, i) => ({
+       27 +          modelId: `placeholder-${i}`,
+       28 +          modelName: '',
+       29 +          url: '',
+       30 +          mediaType: 'image' as const,
+       31 +          pending: true,
+       32 +        }))
+       33 +      : []
+       34 +
+       35 +  if (displayItems.length === 0) return null
+       36 +
+       37    return (
+       22 -    <div className="mt-6">
+       23 -      <h2 className="text-sm font-semibold text-slate-400 mb-3">생성
+          -결과</h2>
+       24 -      {loading && (
+       25 -        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-
+          -4 gap-3">
+       26 -          {Array.from({ length: selectedCount }).map((_, i) => (
+       27 -            <div
+       28 -              key={i}
+       29 -              className="aspect-square rounded-xl bg-[#1a1d27] border
+          - border-[#2a2d3a] flex items-center justify-center"
+       30 -            >
+       31 -              <Loader2 size={24} className="text-violet-400 animate-s
+          -pin" />
+       32 -            </div>
+       33 -          ))}
+       34 -        </div>
+       35 -      )}
+       38 +    <div className="mt-2">
+       39 +      <div className="flex items-center gap-2 mb-3">
+       40 +        <h2 className="text-sm font-semibold text-slate-400">생성 결
+          +과</h2>
+       41 +        {loading && (
+       42 +          <span className="text-xs text-violet-400 flex items-center
+          +gap-1">
+       43 +            <Loader2 size={12} className="animate-spin" />
+       44 +            생성 중...
+       45 +          </span>
+       46 +        )}
+       47 +      </div>
+       48
+       37 -      {!loading && results.length > 0 && (
+       38 -        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-
+          -4 gap-3">
+       39 -          {results.map((img) => (
+       40 -            <div
+       41 -              key={img.modelId}
+       42 -              className="group relative rounded-xl overflow-hidden bo
+          -rder border-[#2a2d3a] bg-[#1a1d27]"
+       49 +      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4
+          +gap-3">
+       50 +        {displayItems.map((item, idx) => (
+       51 +          <ResultCard key={item.modelId || idx} item={item} onDownloa
+          +d={download} />
+       52 +        ))}
+       53 +      </div>
+       54 +    </div>
+       55 +  )
+       56 +}
+       57 +
+       58 +function ResultCard({
+       59 +  item,
+       60 +  onDownload,
+       61 +}: {
+       62 +  item: GeneratedResult
+       63 +  onDownload: (r: GeneratedResult) => void
+       64 +}) {
+       65 +  const isVideo = item.mediaType === 'video'
+       66 +  const isPending = item.pending || (!item.url && !item.error)
+       67 +
+       68 +  return (
+       69 +    <div className="group relative rounded-xl overflow-hidden border
+          +border-[#2a2d3a] bg-[#1a1d27]">
+       70 +      {item.error ? (
+       71 +        /* Error state */
+       72 +        <div className="aspect-video flex flex-col items-center justi
+          +fy-center gap-2 p-3">
+       73 +          <AlertCircle size={20} className="text-red-400" />
+       74 +          <p className="text-xs text-red-400 text-center leading-snug
+          +">{item.error}</p>
+       75 +        </div>
+       76 +      ) : isPending ? (
+       77 +        /* Loading / polling state */
+       78 +        <div className={`${isVideo ? 'aspect-video' : 'aspect-square'
+          +} flex flex-col items-center justify-center gap-2`}>
+       79 +          {isVideo ? (
+       80 +            <Film size={20} className="text-rose-400 animate-pulse" /
+          +>
+       81 +          ) : (
+       82 +            <Loader2 size={20} className="text-violet-400 animate-spi
+          +n" />
+       83 +          )}
+       84 +          <p className="text-[11px] text-slate-500">
+       85 +            {isVideo ? '영상 생성 중...' : '이미지 생성 중...'}
+       86 +          </p>
+       87 +        </div>
+       88 +      ) : isVideo ? (
+       89 +        /* Video result */
+       90 +        <>
+       91 +          <video
+       92 +            src={item.url}
+       93 +            controls
+       94 +            autoPlay
+       95 +            loop
+       96 +            muted
+       97 +            className="w-full aspect-video object-cover bg-black"
+       98 +          />
+       99 +          <div className="absolute top-2 right-2 opacity-0 group-hove
+          +r:opacity-100 transition-opacity">
+      100 +            <button
+      101 +              onClick={() => onDownload(item)}
+      102 +              className="p-1.5 rounded-lg bg-black/50 hover:bg-black/
+          +70 text-white transition-colors"
+      103              >
+       44 -              {img.error ? (
+       45 -                <div className="aspect-square flex flex-col items-cen
+          -ter justify-center gap-2 p-3">
+       46 -                  <AlertCircle size={24} className="text-red-400" />
+       47 -                  <p className="text-xs text-red-400 text-center">{im
+          -g.error}</p>
+       48 -                </div>
+       49 -              ) : (
+       50 -                <>
+       51 -                  <img
+       52 -                    src={img.url}
+       53 -                    alt={img.modelName}
+       54 -                    className="w-full aspect-square object-cover"
+       55 -                  />
+       56 -                  <div className="absolute inset-0 bg-black/0 group-h
+          -over:bg-black/40 transition-all flex items-end">
+       57 -                    <div className="w-full p-2 translate-y-full group
+          --hover:translate-y-0 transition-transform flex items-center justify-b
+          -etween">
+       58 -                      <span className="text-xs text-white font-medium
+          - truncate max-w-[70%]">
+       59 -                        {img.modelName}
+       60 -                      </span>
+       61 -                      <button
+       62 -                        onClick={() => downloadImage(img)}
+       63 -                        className="p-1.5 rounded-lg bg-white/20 hover
+          -:bg-white/30 text-white transition-colors"
+       64 -                      >
+       65 -                        <Download size={13} />
+       66 -                      </button>
+       67 -                    </div>
+       68 -                  </div>
+       69 -                </>
+       70 -              )}
+       71 -              <div className="px-2 py-1.5 border-t border-[#2a2d3a]">
+       72 -                <p className="text-xs text-slate-400 truncate">{img.m
+          -odelName}</p>
+       73 -              </div>
+      104 +              <Download size={13} />
+      105 +            </button>
+      106 +          </div>
+      107 +        </>
+      108 +      ) : (
+      109 +        /* Image result */
+      110 +        <>
+      111 +          <img
+      112 +            src={item.url}
+      113 +            alt={item.modelName}
+      114 +            className="w-full aspect-square object-cover"
+      115 +          />
+      116 +          <div className="absolute inset-0 bg-black/0 group-hover:bg-
+          +black/40 transition-all flex items-end">
+      117 +            <div className="w-full p-2 translate-y-full group-hover:t
+          +ranslate-y-0 transition-transform flex items-center justify-between">
+      118 +              <span className="text-xs text-white font-medium truncat
+          +e max-w-[70%]">
+      119 +                {item.modelName}
+      120 +              </span>
+      121 +              <button
+      122 +                onClick={() => onDownload(item)}
+      123 +                className="p-1.5 rounded-lg bg-white/20 hover:bg-whit
+          +e/30 text-white transition-colors"
+      124 +              >
+      125 +                <Download size={13} />
+      126 +              </button>
+      127              </div>
+       75 -          ))}
+       76 -        </div>
+      128 +          </div>
+      129 +        </>
+      130        )}
+      131 +
+      132 +      {/* model name footer */}
+      133 +      <div className="px-2 py-1.5 border-t border-[#2a2d3a] flex item
+          +s-center gap-1.5">
+      134 +        {isVideo && <Film size={10} className="text-rose-400 shrink-0
+          +" />}
+      135 +        <p className="text-xs text-slate-400 truncate">{item.modelNam
+          +e || '생성 중...'}</p>
+      136 +      </div>
+      137      </div>
+      138    )
+      139  }
+
+⏺ Bash(npm run build 2>&1 | tail -12)
+  ⎿  > multi-img-gen@0.0.1 build
+     > tsc && vite build
+     … +9 lines (ctrl+o to expand)
+
+⏺ 빌드 성공입니다. 추가된 내용 정리:
+
+  비디오 모델 (Together AI)
+
+  ┌───────────────────────┬────────────────────────────┬─────────────┐
+  │         회사          │            모델            │  가격/영상  │
+  ├───────────────────────┼────────────────────────────┼─────────────┤
+  │ Google                │ Veo 2.0                    │ $0.50       │
+  ├───────────────────────┼────────────────────────────┼─────────────┤
+  │ Google                │ Veo 3.0 Fast               │ $0.75       │
+  ├───────────────────────┼────────────────────────────┼─────────────┤
+  │ Google                │ Veo 3.0 Fast + Audio       │ $0.90       │
+  ├───────────────────────┼────────────────────────────┼─────────────┤
+  │ Google                │ Veo 3.0                    │ $1.80       │
+  ├───────────────────────┼────────────────────────────┼─────────────┤
+  │ Google                │ Veo 3.0 + Audio            │ $2.40       │
+  ├───────────────────────┼────────────────────────────┼─────────────┤
+  │ kwaivgI               │ Kling 1.6 Standard         │ $0.22       │
+  ├───────────────────────┼────────────────────────────┼─────────────┤
+  │ kwaivgI               │ Kling 1.6 Pro ~ 2.1 Master │ $0.28~$0.80 │
+  ├───────────────────────┼────────────────────────────┼─────────────┤
+  │ OpenAI (via Together) │ Sora 2 / Sora 2 Pro        │ $1.50~$2.00 │
+  └───────────────────────┴────────────────────────────┴─────────────┘
+
+  동작 방식
+  - 비디오는 POST /v2/videos → job ID 발급 → 5초마다 폴링 → 완료 시 URL 표시
+  - 이미지와 비디오를 동시에 선택 가능, 각각 독립적으로 완료되는 순서대로 화면에 표시
+  - 카드에 VIDEO / NEW 뱃지, 가격 단위도 /영상 으로 분기
+  - Gemini 3.1 Flash Image → Gemini 3.1 Flash Image (Nano Banana 2) 로 수정
+
+✻ Cogitated for 5m 7s
+
+❯ 영상은 넣지 말고, 이미지만                                                           
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Added 1 line, removed 3 lines
+       1  export type Provider = 'together' | 'openai' | 'google'
+       2 -export type MediaType = 'image' | 'video'
+       2
+       3  export interface ImageModel {
+       4    id: string
+       5    name: string
+       6    author: string
+       8 -  pricePerImage: number // USD (per image or per video)
+       7 +  pricePerImage: number // USD
+       8    modelId: string
+       9    provider: Provider
+      11 -  mediaType?: MediaType  // defaults to 'image'
+      10    description?: string
+      11    isNew?: boolean
+      12  }
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Added 2 lines, removed 2 lines
+      298      isNew: true,
+      299    },
+      300
+      301 -  // ── Video Models (Together AI) ───────────────────────────────
+      302 -  // Google Veo
+      301 +  // ── (Video models removed — image only) ─────────────────────
+      302 +  // Placeholder to mark end of image models
+      303    {
+      304      id: 'veo-20',
+      305      name: 'Google Veo 2.0',
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Added 1 line, removed 129 lines
+      298      isNew: true,
+      299    },
+      300
+      301 -  // ── (Video models removed — image only) ─────────────────────
+      302 -  // Placeholder to mark end of image models
+      303 -  {
+      304 -    id: 'veo-20',
+      305 -    name: 'Google Veo 2.0',
+      306 -    author: 'Google',
+      307 -    pricePerImage: 0.50,
+      308 -    modelId: 'google/veo-2.0',
+      309 -    provider: 'together',
+      310 -    mediaType: 'video',
+      301 +  // (removed
+      302      isNew: true,
+      303    },
+      313 -  {
+      314 -    id: 'veo-30-fast',
+      315 -    name: 'Google Veo 3.0 Fast',
+      316 -    author: 'Google',
+      317 -    pricePerImage: 0.75,
+      318 -    modelId: 'google/veo-3.0-fast',
+      319 -    provider: 'together',
+      320 -    mediaType: 'video',
+      321 -    isNew: true,
+      322 -  },
+      323 -  {
+      324 -    id: 'veo-30-fast-audio',
+      325 -    name: 'Google Veo 3.0 Fast + Audio',
+      326 -    author: 'Google',
+      327 -    pricePerImage: 0.90,
+      328 -    modelId: 'google/veo-3.0-fast-audio',
+      329 -    provider: 'together',
+      330 -    mediaType: 'video',
+      331 -    isNew: true,
+      332 -  },
+      333 -  {
+      334 -    id: 'veo-30',
+      335 -    name: 'Google Veo 3.0',
+      336 -    author: 'Google',
+      337 -    pricePerImage: 1.80,
+      338 -    modelId: 'google/veo-3.0',
+      339 -    provider: 'together',
+      340 -    mediaType: 'video',
+      341 -    isNew: true,
+      342 -  },
+      343 -  {
+      344 -    id: 'veo-30-audio',
+      345 -    name: 'Google Veo 3.0 + Audio',
+      346 -    author: 'Google',
+      347 -    pricePerImage: 2.40,
+      348 -    modelId: 'google/veo-3.0-audio',
+      349 -    provider: 'together',
+      350 -    mediaType: 'video',
+      351 -    isNew: true,
+      352 -  },
+      353 -  // Kling (kwaivgI)
+      354 -  {
+      355 -    id: 'kling-16-standard',
+      356 -    name: 'Kling 1.6 Standard',
+      357 -    author: 'kwaivgI',
+      358 -    pricePerImage: 0.22,
+      359 -    modelId: 'kwaivgI/kling-1.6-standard',
+      360 -    provider: 'together',
+      361 -    mediaType: 'video',
+      362 -  },
+      363 -  {
+      364 -    id: 'kling-16-pro',
+      365 -    name: 'Kling 1.6 Pro',
+      366 -    author: 'kwaivgI',
+      367 -    pricePerImage: 0.28,
+      368 -    modelId: 'kwaivgI/kling-1.6-pro',
+      369 -    provider: 'together',
+      370 -    mediaType: 'video',
+      371 -  },
+      372 -  {
+      373 -    id: 'kling-20-master',
+      374 -    name: 'Kling 2.0 Master',
+      375 -    author: 'kwaivgI',
+      376 -    pricePerImage: 0.45,
+      377 -    modelId: 'kwaivgI/kling-2.0-master',
+      378 -    provider: 'together',
+      379 -    mediaType: 'video',
+      380 -  },
+      381 -  {
+      382 -    id: 'kling-21-standard',
+      383 -    name: 'Kling 2.1 Standard',
+      384 -    author: 'kwaivgI',
+      385 -    pricePerImage: 0.30,
+      386 -    modelId: 'kwaivgI/kling-2.1-standard',
+      387 -    provider: 'together',
+      388 -    mediaType: 'video',
+      389 -    isNew: true,
+      390 -  },
+      391 -  {
+      392 -    id: 'kling-21-pro',
+      393 -    name: 'Kling 2.1 Pro',
+      394 -    author: 'kwaivgI',
+      395 -    pricePerImage: 0.45,
+      396 -    modelId: 'kwaivgI/kling-2.1-pro',
+      397 -    provider: 'together',
+      398 -    mediaType: 'video',
+      399 -    isNew: true,
+      400 -  },
+      401 -  {
+      402 -    id: 'kling-21-master',
+      403 -    name: 'Kling 2.1 Master',
+      404 -    author: 'kwaivgI',
+      405 -    pricePerImage: 0.80,
+      406 -    modelId: 'kwaivgI/kling-2.1-master',
+      407 -    provider: 'together',
+      408 -    mediaType: 'video',
+      409 -    isNew: true,
+      410 -  },
+      411 -  // OpenAI Sora (via Together AI)
+      412 -  {
+      413 -    id: 'sora-2',
+      414 -    name: 'Sora 2',
+      415 -    author: 'OpenAI (via Together)',
+      416 -    pricePerImage: 1.50,
+      417 -    modelId: 'openai/sora-2',
+      418 -    provider: 'together',
+      419 -    mediaType: 'video',
+      420 -    isNew: true,
+      421 -  },
+      422 -  {
+      423 -    id: 'sora-2-pro',
+      424 -    name: 'Sora 2 Pro',
+      425 -    author: 'OpenAI (via Together)',
+      426 -    pricePerImage: 2.00,
+      427 -    modelId: 'openai/sora-2-pro',
+      428 -    provider: 'together',
+      429 -    mediaType: 'video',
+      430 -    isNew: true,
+      431 -  },
+      304  ]
+      305
+      306  export const COMPANY_COLORS: Record<string, string> = {
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Removed 3 lines
+      298      isNew: true,
+      299    },
+      300
+      301 -  // (removed
+      302 -    isNew: true,
+      303 -  },
+      301  ]
+      302
+      303  export const COMPANY_COLORS: Record<string, string> = {
+
+⏺ 불필요한 색상 항목도 정리합니다:
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Removed 2 lines
+      311    'Wan-AI': '#14b8a6',
+      312    'Ideogram': '#f97316',
+      313    'OpenAI': '#10a37f',
+      314 -  'OpenAI (via Together)': '#10a37f',
+      314    'Google': '#4285f4',
+      316 -  'kwaivgI': '#ff6b35',
+      315  }
+      316
+      317  export const PROVIDER_LABELS: Record<Provider, string> = {
+
+⏺ useImageGen.ts에서 비디오 관련 코드 제거:
+
+⏺ Write(src/hooks/useImageGen.ts)
+  ⎿  Added 24 lines, removed 113 lines
+       1  import { useState } from 'react'
+       2 -import type { Provider, MediaType } from '../data/imageModels'
+       2 +import type { Provider } from '../data/imageModels'
+       3
+       4  export interface GeneratedResult {
+       5    modelId: string
+       6    modelName: string
+       7    url: string
+       8 -  mediaType: MediaType
+       8    error?: string
+      10 -  pending?: boolean  // still generating (video polling in progress)
+       9  }
+      10
+      11  export interface ApiKeys {
+     ...
+      18    modelId: string
+      19    name: string
+      20    provider: Provider
+      23 -  mediaType?: MediaType
+      21  }
+      22
+      26 -const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+      27 - 
+      28 -// ── Together AI — Image ───────────────────────────────────────
+      29 -async function generateImageTogether(
+      23 +// ── Together AI ───────────────────────────────────────────────
+      24 +async function generateTogether(
+      25    apiKey: string,
+      26    modelId: string,
+      27    modelName: string,
+     ...
+       39      const txt = await res.text()
+       40      let msg = `${res.status}`
+       41      try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+       47 -    return { modelId, modelName, url: '', mediaType: 'image', error:
+          -msg }
+       42 +    return { modelId, modelName, url: '', error: msg }
+       43    }
+       44    const data = await res.json()
+       45    const b64 = data?.data?.[0]?.b64_json as string | undefined
+       46    const url = b64 ? `data:image/png;base64,${b64}` : (data?.data?.[0]
+           ?.url ?? '')
+       52 -  return { modelId, modelName, url, mediaType: 'image' }
+       47 +  return { modelId, modelName, url }
+       48  }
+       49
+       55 -// ── Together AI — Video (async poll) ─────────────────────────
+       56 -async function generateVideoTogether(
+       57 -  apiKey: string,
+       58 -  modelId: string,
+       59 -  modelName: string,
+       60 -  prompt: string,
+       61 -  onUpdate: (r: GeneratedResult) => void,
+       62 -): Promise<GeneratedResult> {
+       63 -  // 1. Submit job
+       64 -  const res = await fetch('https://api.together.xyz/v2/videos', {
+       65 -    method: 'POST',
+       66 -    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'ap
+          -plication/json' },
+       67 -    body: JSON.stringify({
+       68 -      model: modelId,
+       69 -      prompt,
+       70 -      width: 1280,
+       71 -      height: 720,
+       72 -      seconds: '5',
+       73 -      fps: 24,
+       74 -    }),
+       75 -  })
+       76 -  if (!res.ok) {
+       77 -    const txt = await res.text()
+       78 -    let msg = `${res.status}`
+       79 -    try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+       80 -    return { modelId, modelName, url: '', mediaType: 'video', error:
+          -msg }
+       81 -  }
+       82 -  const job = await res.json()
+       83 -  const jobId: string = job.id
+       84 - 
+       85 -  // 2. Poll every 5s (max 5 min = 60 attempts)
+       86 -  for (let i = 0; i < 60; i++) {
+       87 -    await sleep(5000)
+       88 -    try {
+       89 -      const poll = await fetch(`https://api.together.xyz/v2/videos/${
+          -jobId}`, {
+       90 -        headers: { Authorization: `Bearer ${apiKey}` },
+       91 -      })
+       92 -      if (!poll.ok) continue
+       93 -      const data = await poll.json()
+       94 - 
+       95 -      if (data.status === 'completed') {
+       96 -        const result: GeneratedResult = {
+       97 -          modelId, modelName,
+       98 -          url: data.outputs?.video_url ?? '',
+       99 -          mediaType: 'video',
+      100 -        }
+      101 -        onUpdate(result)
+      102 -        return result
+      103 -      }
+      104 -      if (data.status === 'failed') {
+      105 -        return { modelId, modelName, url: '', mediaType: 'video', err
+          -or: '비디오 생성 실패' }
+      106 -      }
+      107 -      // in_progress — update pending state so UI can show elapsed ti
+          -me
+      108 -      onUpdate({ modelId, modelName, url: '', mediaType: 'video', pen
+          -ding: true })
+      109 -    } catch {}
+      110 -  }
+      111 -  return { modelId, modelName, url: '', mediaType: 'video', error: '
+          -시간 초과 (5분)' }
+      112 -}
+      113 - 
+       50  // ── OpenAI ────────────────────────────────────────────────────
+       51  async function generateOpenAI(
+       52    apiKey: string,
+     ...
+       70      const txt = await res.text()
+       71      let msg = `${res.status}`
+       72      try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+      137 -    return { modelId, modelName, url: '', mediaType: 'image', error:
+          -msg }
+       73 +    return { modelId, modelName, url: '', error: msg }
+       74    }
+       75    const data = await res.json()
+       76    const b64 = data?.data?.[0]?.b64_json as string | undefined
+       77    const url = b64 ? `data:image/png;base64,${b64}` : (data?.data?.[0]
+           ?.url ?? '')
+      142 -  return { modelId, modelName, url, mediaType: 'image' }
+       78 +  return { modelId, modelName, url }
+       79  }
+       80
+       81  // ── Google Gemini ─────────────────────────────────────────────
+     ...
+      100      const txt = await res.text()
+      101      let msg = `${res.status}`
+      102      try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+      167 -    return { modelId, modelName, url: '', mediaType: 'image', error:
+          -msg }
+      103 +    return { modelId, modelName, url: '', error: msg }
+      104    }
+      105    const data = await res.json()
+      106    const parts = data?.candidates?.[0]?.content?.parts ?? []
+     ...
+      108      p.inlineData?.mimeType?.startsWith('image'),
+      109    )
+      110    if (!imgPart?.inlineData?.data)
+      175 -    return { modelId, modelName, url: '', mediaType: 'image', error:
+          -'이미지 데이터 없음' }
+      111 +    return { modelId, modelName, url: '', error: '이미지 데이터 없음'
+          + }
+      112    return {
+      113      modelId, modelName,
+      114      url: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inline
+           Data.data}`,
+      179 -    mediaType: 'image',
+      115    }
+      116  }
+      117
+     ...
+      121    const [results, setResults] = useState<GeneratedResult[]>([])
+      122    const [error, setError] = useState<string | null>(null)
+      123
+      189 -  function updateResult(result: GeneratedResult) {
+      190 -    setResults((prev) =>
+      191 -      prev.map((r) => (r.modelId === result.modelId ? result : r)),
+      192 -    )
+      193 -  }
+      194 - 
+      124    async function generateAll(
+      125      models: ModelRequest[],
+      126      prompt: string,
+     ...
+      130    ) {
+      131      if (!prompt.trim()) { setError('프롬프트를 입력해주세요.'); retur
+           n }
+      132
+      204 -    const hasVideo    = models.some((m) => m.mediaType === 'video')
+      133      const needsTogether = models.some((m) => m.provider === 'together
+           ')
+      134      const needsOpenAI   = models.some((m) => m.provider === 'openai')
+      135      const needsGoogle   = models.some((m) => m.provider === 'google')
+      208 -    if ((needsTogether || hasVideo) && !apiKeys.together.trim()) { se
+          -tError('Together AI API Key를 입력해주세요.'); return }
+      209 -    if (needsOpenAI  && !apiKeys.openai.trim())   { setError('OpenAI
+          -API Key를 입력해주세요.'); return }
+      210 -    if (needsGoogle  && !apiKeys.google.trim())   { setError('Google
+          -API Key를 입력해주세요.'); return }
+      136 +    if (needsTogether && !apiKeys.together.trim()) { setError('Togeth
+          +er AI API Key를 입력해주세요.'); return }
+      137 +    if (needsOpenAI   && !apiKeys.openai.trim())   { setError('OpenAI
+          + API Key를 입력해주세요.'); return }
+      138 +    if (needsGoogle   && !apiKeys.google.trim())   { setError('Google
+          + API Key를 입력해주세요.'); return }
+      139
+      140      setError(null)
+      141      setLoading(true)
+      142 +    setResults([])
+      143
+      215 -    // Placeholders so the UI shows spinners immediately
+      216 -    setResults(
+      217 -      models.map((m) => ({
+      218 -        modelId: m.modelId,
+      219 -        modelName: m.name,
+      220 -        url: '',
+      221 -        mediaType: m.mediaType ?? 'image',
+      222 -        pending: true,
+      223 -      })),
+      224 -    )
+      225 - 
+      144      const tasks = models.map((m) => {
+      227 -      const isVideo = m.mediaType === 'video'
+      228 - 
+      229 -      let task: Promise<GeneratedResult>
+      230 -      if (isVideo) {
+      231 -        task = generateVideoTogether(apiKeys.together, m.modelId, m.n
+          -ame, prompt, updateResult)
+      232 -      } else if (m.provider === 'openai') {
+      233 -        task = generateOpenAI(apiKeys.openai, m.modelId, m.name, prom
+          -pt, width, height)
+      234 -      } else if (m.provider === 'google') {
+      235 -        task = generateGoogle(apiKeys.google, m.modelId, m.name, prom
+          -pt)
+      236 -      } else {
+      237 -        task = generateImageTogether(apiKeys.together, m.modelId, m.n
+          -ame, prompt, width, height, steps)
+      238 -      }
+      239 - 
+      240 -      // Update result as soon as this model finishes
+      241 -      return task.then((result) => updateResult(result)).catch(() =>
+          -{
+      242 -        updateResult({ modelId: m.modelId, modelName: m.name, url: ''
+          -, mediaType: m.mediaType ?? 'image', error: '알 수 없는 오류' })
+      243 -      })
+      145 +      if (m.provider === 'openai') return generateOpenAI(apiKeys.open
+          +ai, m.modelId, m.name, prompt, width, height)
+      146 +      if (m.provider === 'google') return generateGoogle(apiKeys.goog
+          +le, m.modelId, m.name, prompt)
+      147 +      return generateTogether(apiKeys.together, m.modelId, m.name, pr
+          +ompt, width, height, steps)
+      148      })
+      149
+      246 -    await Promise.allSettled(tasks)
+      150 +    const settled = await Promise.allSettled(tasks)
+      151 +    const imgs: GeneratedResult[] = settled.map((r, i) =>
+      152 +      r.status === 'fulfilled'
+      153 +        ? r.value
+      154 +        : { modelId: models[i].modelId, modelName: models[i].name, ur
+          +l: '', error: String((r as PromiseRejectedResult).reason) },
+      155 +    )
+      156 +
+      157 +    setResults(imgs)
+      158      setLoading(false)
+      159    }
+      160
+
+⏺ ModelCard과 ResultsPanel도 원래 이미지 전용으로 되돌립니다:
+
+⏺ Write(src/components/ModelCard.tsx)
+  ⎿  Added 6 lines, removed 17 lines
+       7  }
+       8
+       9  export default function ModelCard({ model, selected, onToggle }: Props
+          ) {
+      10 -  const isVideo = model.mediaType === 'video'
+      11 - 
+      10    return (
+      11      <button
+      12        onClick={() => onToggle(model.id)}
+     ...
+      33          )}
+      34        </div>
+      35
+      38 -      {/* top-right badges */}
+      39 -      <div className="absolute top-2 right-2 flex items-center gap-1">
+      40 -        {isVideo && (
+      41 -          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-ro
+         -se-500/20 text-rose-400 font-bold tracking-wide">
+      42 -            VIDEO
+      43 -          </span>
+      44 -        )}
+      45 -        {model.isNew && (
+      46 -          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-em
+         -erald-500/20 text-emerald-400 font-medium">
+      47 -            NEW
+      48 -          </span>
+      49 -        )}
+      50 -      </div>
+      36 +      {model.isNew && (
+      37 +        <span className="absolute top-2 right-2 text-[10px] px-1.5 py-
+         +0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium">
+      38 +          NEW
+      39 +        </span>
+      40 +      )}
+      41
+      42        <span className="pl-6 text-sm font-medium text-slate-100 leading
+          -tight pr-1">
+      43          {model.name}
+      44        </span>
+      45        <span className={`pl-6 text-xs font-semibold ${selected ? 'text-
+          violet-400' : 'text-slate-400'}`}>
+      56 -        ${model.pricePerImage.toFixed(isVideo ? 2 : 3)}
+      57 -        <span className="font-normal text-slate-500"> /{isVideo ? '영
+         -상' : '장'}</span>
+      46 +        ${model.pricePerImage.toFixed(3)}
+      47        </span>
+      48      </button>
+      49    )
+
+⏺ Write(src/components/ResultsPanel.tsx)
+  ⎿  Added 42 lines, removed 112 lines
+      1 -import { Download, AlertCircle, Loader2, Film } from 'lucide-react'
+      1 +import { Download, AlertCircle, Loader2 } from 'lucide-react'
+      2  import type { GeneratedResult } from '../hooks/useImageGen'
+      3
+      4  interface Props {
+     ...
+       14      if (!r.url) return
+       15      const a = document.createElement('a')
+       16      a.href = r.url
+       17 -    a.download = `${r.modelName.replace(/\s+/g, '_')}.${r.mediaType =
+          -== 'video' ? 'mp4' : 'png'}`
+       17 +    a.download = `${r.modelName.replace(/\s+/g, '_')}.png`
+       18      a.click()
+       19    }
+       20
+       21 -  // Show placeholders before any results arrive
+       22 -  const displayItems: GeneratedResult[] =
+       23 -    results.length > 0
+       24 -      ? results
+       25 -      : loading
+       26 -      ? Array.from({ length: selectedCount }, (_, i) => ({
+       27 -          modelId: `placeholder-${i}`,
+       28 -          modelName: '',
+       29 -          url: '',
+       30 -          mediaType: 'image' as const,
+       31 -          pending: true,
+       32 -        }))
+       33 -      : []
+       34 - 
+       35 -  if (displayItems.length === 0) return null
+       36 - 
+       21    return (
+       22      <div className="mt-2">
+       39 -      <div className="flex items-center gap-2 mb-3">
+       40 -        <h2 className="text-sm font-semibold text-slate-400">생성 결
+          -과</h2>
+       41 -        {loading && (
+       42 -          <span className="text-xs text-violet-400 flex items-center
+          -gap-1">
+       43 -            <Loader2 size={12} className="animate-spin" />
+       44 -            생성 중...
+       45 -          </span>
+       46 -        )}
+       47 -      </div>
+       23 +      <h2 className="text-sm font-semibold text-slate-400 mb-3">생성
+          +결과</h2>
+       24
+       49 -      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4
+          -gap-3">
+       50 -        {displayItems.map((item, idx) => (
+       51 -          <ResultCard key={item.modelId || idx} item={item} onDownloa
+          -d={download} />
+       52 -        ))}
+       53 -      </div>
+       54 -    </div>
+       55 -  )
+       56 -}
+       57 - 
+       58 -function ResultCard({
+       59 -  item,
+       60 -  onDownload,
+       61 -}: {
+       62 -  item: GeneratedResult
+       63 -  onDownload: (r: GeneratedResult) => void
+       64 -}) {
+       65 -  const isVideo = item.mediaType === 'video'
+       66 -  const isPending = item.pending || (!item.url && !item.error)
+       67 - 
+       68 -  return (
+       69 -    <div className="group relative rounded-xl overflow-hidden border
+          -border-[#2a2d3a] bg-[#1a1d27]">
+       70 -      {item.error ? (
+       71 -        /* Error state */
+       72 -        <div className="aspect-video flex flex-col items-center justi
+          -fy-center gap-2 p-3">
+       73 -          <AlertCircle size={20} className="text-red-400" />
+       74 -          <p className="text-xs text-red-400 text-center leading-snug
+          -">{item.error}</p>
+       75 -        </div>
+       76 -      ) : isPending ? (
+       77 -        /* Loading / polling state */
+       78 -        <div className={`${isVideo ? 'aspect-video' : 'aspect-square'
+          -} flex flex-col items-center justify-center gap-2`}>
+       79 -          {isVideo ? (
+       80 -            <Film size={20} className="text-rose-400 animate-pulse" /
+          ->
+       81 -          ) : (
+       82 -            <Loader2 size={20} className="text-violet-400 animate-spi
+          -n" />
+       83 -          )}
+       84 -          <p className="text-[11px] text-slate-500">
+       85 -            {isVideo ? '영상 생성 중...' : '이미지 생성 중...'}
+       86 -          </p>
+       87 -        </div>
+       88 -      ) : isVideo ? (
+       89 -        /* Video result */
+       90 -        <>
+       91 -          <video
+       92 -            src={item.url}
+       93 -            controls
+       94 -            autoPlay
+       95 -            loop
+       96 -            muted
+       97 -            className="w-full aspect-video object-cover bg-black"
+       98 -          />
+       99 -          <div className="absolute top-2 right-2 opacity-0 group-hove
+          -r:opacity-100 transition-opacity">
+      100 -            <button
+      101 -              onClick={() => onDownload(item)}
+      102 -              className="p-1.5 rounded-lg bg-black/50 hover:bg-black/
+          -70 text-white transition-colors"
+      103 -            >
+      104 -              <Download size={13} />
+      105 -            </button>
+      106 -          </div>
+      107 -        </>
+      108 -      ) : (
+      109 -        /* Image result */
+      110 -        <>
+      111 -          <img
+      112 -            src={item.url}
+      113 -            alt={item.modelName}
+      114 -            className="w-full aspect-square object-cover"
+      115 -          />
+      116 -          <div className="absolute inset-0 bg-black/0 group-hover:bg-
+          -black/40 transition-all flex items-end">
+      117 -            <div className="w-full p-2 translate-y-full group-hover:t
+          -ranslate-y-0 transition-transform flex items-center justify-between">
+      118 -              <span className="text-xs text-white font-medium truncat
+          -e max-w-[70%]">
+      119 -                {item.modelName}
+      120 -              </span>
+      121 -              <button
+      122 -                onClick={() => onDownload(item)}
+      123 -                className="p-1.5 rounded-lg bg-white/20 hover:bg-whit
+          -e/30 text-white transition-colors"
+      124 -              >
+      125 -                <Download size={13} />
+      126 -              </button>
+       25 +      {loading && (
+       26 +        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-
+          +4 gap-3">
+       27 +          {Array.from({ length: selectedCount }).map((_, i) => (
+       28 +            <div key={i} className="aspect-square rounded-xl bg-[#1a1
+          +d27] border border-[#2a2d3a] flex items-center justify-center">
+       29 +              <Loader2 size={24} className="text-violet-400 animate-s
+          +pin" />
+       30              </div>
+      128 -          </div>
+      129 -        </>
+       31 +          ))}
+       32 +        </div>
+       33        )}
+       34
+      132 -      {/* model name footer */}
+      133 -      <div className="px-2 py-1.5 border-t border-[#2a2d3a] flex item
+          -s-center gap-1.5">
+      134 -        {isVideo && <Film size={10} className="text-rose-400 shrink-0
+          -" />}
+      135 -        <p className="text-xs text-slate-400 truncate">{item.modelNam
+          -e || '생성 중...'}</p>
+      136 -      </div>
+       35 +      {!loading && results.length > 0 && (
+       36 +        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-
+          +4 gap-3">
+       37 +          {results.map((r) => (
+       38 +            <div key={r.modelId} className="group relative rounded-xl
+          + overflow-hidden border border-[#2a2d3a] bg-[#1a1d27]">
+       39 +              {r.error ? (
+       40 +                <div className="aspect-square flex flex-col items-cen
+          +ter justify-center gap-2 p-3">
+       41 +                  <AlertCircle size={24} className="text-red-400" />
+       42 +                  <p className="text-xs text-red-400 text-center">{r.
+          +error}</p>
+       43 +                </div>
+       44 +              ) : (
+       45 +                <>
+       46 +                  <img src={r.url} alt={r.modelName} className="w-ful
+          +l aspect-square object-cover" />
+       47 +                  <div className="absolute inset-0 bg-black/0 group-h
+          +over:bg-black/40 transition-all flex items-end">
+       48 +                    <div className="w-full p-2 translate-y-full group
+          +-hover:translate-y-0 transition-transform flex items-center justify-b
+          +etween">
+       49 +                      <span className="text-xs text-white font-medium
+          + truncate max-w-[70%]">{r.modelName}</span>
+       50 +                      <button
+       51 +                        onClick={() => download(r)}
+       52 +                        className="p-1.5 rounded-lg bg-white/20 hover
+          +:bg-white/30 text-white transition-colors"
+       53 +                      >
+       54 +                        <Download size={13} />
+       55 +                      </button>
+       56 +                    </div>
+       57 +                  </div>
+       58 +                </>
+       59 +              )}
+       60 +              <div className="px-2 py-1.5 border-t border-[#2a2d3a]">
+       61 +                <p className="text-xs text-slate-400 truncate">{r.mod
+          +elName}</p>
+       62 +              </div>
+       63 +            </div>
+       64 +          ))}
+       65 +        </div>
+       66 +      )}
+       67      </div>
+       68    )
+       69  }
+
+⏺ Bash(npm run build 2>&1 | tail -10)
+  ⎿  vite v6.4.1 building for production...
+     transforming...
+     ✓ 1584 modules transformed.
+     … +6 lines (ctrl+o to expand)
+
+⏺ 완료입니다. Veo / Kling / Sora 비디오 모델 전부 제거했고, 이미지 모델만 남았습니다.
+  코드도 비디오 관련 폴링 로직 없이 깔끔하게 정리됐습니다.
+
+✻ Sautéed for 1m 51s
+
+❯ 그리고 github page로 배포할 수 있도록 무엇을 해야하니? 알려주렴.                     
+
+  Read 2 files (ctrl+o to expand)
+
+⏺ 2가지만 수정하면 됩니다. 직접 해드리겠습니다.
+
+  필요한 변경 사항:
+  1. vite.config.ts — base 경로 설정 (GitHub repo 이름)
+  2. GitHub Actions 워크플로우 파일 추가 (자동 배포)
+
+  ---
+  먼저 GitHub 레포 이름을 확인해야 합니다. 현재 디렉토리명 multiImgGen-2603 이 레포
+  이름인가요? 맞다면 바로 설정하겠습니다.
+
+  레포 이름이 multiImgGen-2603 이라고 가정하고 진행합니다.
+
+⏺ Update(vite.config.ts)
+  ⎿  Added 1 line
+      3
+      4  export default defineConfig({
+      5    plugins: [react()],
+      6 +  base: '/multiImgGen-2603/',
+      7  })
+
+⏺ Bash(mkdir -p
+      /Users/daniel_wj/Documents/Github_Frontierall/multiImgGen-2603/.github/workflows)
+  ⎿  Done
+
+⏺ Write(.github/workflows/deploy.yml)
+  ⎿  Wrote 41 lines to .github/workflows/deploy.yml
+       1 name: Deploy to GitHub Pages
+       2
+       3 on:
+       4   push:
+       5     branches:
+       6       - main
+       7
+       8 permissions:
+       9   contents: read
+      10   pages: write
+     … +31 lines (ctrl+o to expand)
+
+⏺ Bash(npm run build 2>&1 | tail -8)
+  ⎿  transforming...
+     ✓ 1584 modules transformed.
+     rendering chunks...
+     … +5 lines (ctrl+o to expand)
+
+⏺ 빌드 확인 완료. 이제 GitHub에서 해야 할 설정입니다.
+
+  ---
+  배포 순서
+
+  1단계 — GitHub 레포 생성 및 push
+
+  # 레포 새로 만들었다면 (아직 git init 안 한 경우)
+  git init
+  git add .
+  git commit -m "initial commit"
+  git remote add origin https://github.com/[유저명]/multiImgGen-2603.git
+  git push -u origin main
+
+  2단계 — GitHub Pages 소스를 "GitHub Actions"으로 변경
+
+  레포 → Settings → Pages → Source를 "GitHub Actions" 으로 선택
+
+  Settings
+  └── Pages
+      └── Build and deployment
+          └── Source: GitHub Actions  ← 이것 선택
+
+  3단계 — main 브랜치에 push하면 자동 배포
+
+  git push origin main
+  # → Actions 탭에서 빌드 진행 확인
+  # → 완료 후 접속 주소: https://[유저명].github.io/multiImgGen-2603/
+
+  ---
+  레포 이름이 다를 경우
+
+  vite.config.ts의 base 값을 실제 레포 이름으로 바꿔주세요.
+
+  base: '/실제-레포-이름/',
+
+  ---
+  주의사항
+
+  ┌─────────┬────────────────────────────────────────────────────────┐
+  │  항목   │                          내용                          │
+  ├─────────┼────────────────────────────────────────────────────────┤
+  │ API Key │ sessionStorage 저장이라 배포 후에도 안전               │
+  ├─────────┼────────────────────────────────────────────────────────┤
+  │ CORS    │ Together AI·OpenAI·Google 모두 브라우저 직접 호출 허용 │
+  ├─────────┼────────────────────────────────────────────────────────┤
+  │ 쿼터    │ localStorage 저장 → 사용자 브라우저별로 각각 카운팅    │
+  └─────────┴────────────────────────────────────────────────────────┘
+
+✻ Churned for 38s
+
+❯ ignore 파일이 추가되어 있나요?                                                       
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+⏺ 없습니다. 만들어드리겠습니다.
+
+⏺ Write(.gitignore)
+  ⎿  Wrote 26 lines to .gitignore
+       1 # dependencies
+       2 node_modules/
+       3
+       4 # build output
+       5 dist/
+       6
+       7 # env files
+       8 .env
+       9 .env.local
+      10 .env.*.local
+     … +16 lines (ctrl+o to expand)
+
+⏺ .gitignore 생성했습니다. 주요 항목:
+
+  - node_modules/ — 패키지 (용량 크고 불필요)
+  - dist/ — 빌드 결과물 (GitHub Actions가 빌드하므로 불필요)
+  - .env* — 환경 변수 파일 (보안)
+  - .DS_Store — macOS 메타 파일
+
+❯ .env에는 뭐가 들어가 있니? github Action으로 배포 예정임.                            
+
+⏺ 이 프로젝트는 .env 파일이 필요 없습니다.
+
+  이유는 API Key를 코드에 하드코딩하거나 서버에서 관리하는 게 아니라, 사용자가 브라우저
+   UI에서 직접 입력 → sessionStorage 임시 저장 방식이기 때문입니다.
+
+  일반적인 앱:
+    .env → VITE_API_KEY=sk-xxx → 코드에 포함 → 빌드 → 배포
+    (위험: 번들 파일에 키가 노출됨)
+
+  이 앱:
+    사용자가 UI에서 입력 → sessionStorage → API 호출
+    (코드 어디에도 키 없음)
+
+  GitHub Actions 배포 시에도 별도로 설정할 Secrets 없이 그냥 push만 하면 됩니다.
+
+  git add .
+  git commit -m "add gitignore and deploy workflow"
+  git push origin main
+  # → 자동으로 Actions 실행 → GitHub Pages 배포
+
+❯ 배포했는데 이제 된거니? 다른 설정은 안해되 ㄴ되나요?                                 
+
+⏺ GitHub Actions 탭에서 빌드 결과를 확인해야 합니다. 몇 가지 체크해주세요.
+
+  확인 순서
+
+  1. Actions 탭 — 빌드 성공 여부
+
+  github.com/[유저명]/multiImgGen-2603
+  └── Actions 탭
+      └── "Deploy to GitHub Pages" 워크플로우
+          └── ✅ 초록색이면 성공 / ❌ 빨간색이면 오류
+
+  2. Pages 소스 설정 확인 (가장 중요)
+
+  Settings → Pages → Build and deployment
+  └── Source: GitHub Actions  ← 이게 선택되어 있어야 함
+  이게 "Deploy from a branch"로 되어 있으면 배포가 안 됩니다.
+
+  3. 배포 주소 확인
+
+  Settings → Pages → 상단에 주소 표시됨
+  https://[유저명].github.io/multiImgGen-2603/
+
+  ---
+  위 3가지 다 맞으면 추가 설정 없이 완료입니다.
+
+  혹시 Actions에서 오류가 났다면 오류 메시지 캡처해서 보여주시면 바로
+  확인해드리겠습니다.
+
+❯ Annotations                                                                          
+2 errors and 1 warning                                                                 
+build-and-deploy                                                                       
+HttpError: Not Found                                                                   
+build-and-deploy                                                                       
+Get Pages site failed. Please verify that the repository has Pages enabled and         
+configured to build using GitHub Actions, or consider exploring the `enablement`       
+parameter for this action.                                                             
+build-and-deploy                                                                       
+Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and 
+ may not work as expected: actions/checkout@v4, actions/configure-pages@v4,            
+actions/setup-node@v4. Actions will be forced to run with Node.js 24 by default        
+starting June 2nd, 2026. Please check if updated versions of these actions are         
+available that support Node.js 24. To opt into Node.js 24 now, set the                 
+FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your  
+workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by     
+setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https: 
+//github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/   
+                                                                                       
+
+⏺ 오류 원인 2가지입니다.
+
+  1. 즉시 해결 — GitHub Pages 활성화 (Settings에서)
+
+  github.com/[유저명]/multiImgGen-2603
+  └── Settings
+      └── Pages
+          └── Build and deployment
+              └── Source: "GitHub Actions" 선택 후 Save
+
+  이 설정이 안 되어 있어서 발생한 오류입니다. 설정 후 Actions 탭에서 Re-run 하면
+  됩니다.
+
+  ---
+  2. Node.js 버전 경고 — 워크플로우 업데이트
+
+⏺ Update(.github/workflows/deploy.yml)
+  ⎿  Added 1 line, removed 1 line
+      25
+      26        - uses: actions/setup-node@v4
+      27          with:
+      28 -          node-version: 20
+      28 +          node-version: 24
+      29            cache: npm
+      30
+      31        - run: npm ci
+
+⏺ 이 파일 push 후 순서:
+
+  git add .github/workflows/deploy.yml
+  git commit -m "update node version to 24"
+  git push origin main
+
+  Settings → Pages → Source: GitHub Actions 먼저 설정하신 후 push하시면 한 번에
+  해결됩니다.
+
+❯ build-and-deploy                                                                     
+Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and 
+ may not work as expected: actions/checkout@v4, actions/configure-pages@v4,            
+actions/deploy-pages@v4, actions/setup-node@v4, actions/upload-artifact@v4. Actions    
+will be forced to run with Node.js 24 by default starting June 2nd, 2026. Please check 
+ if updated versions of these actions are available that support Node.js 24. To opt    
+into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment       
+variable on the runner or in your workflow file. Once Node.js 24 becomes the default,  
+you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true.   
+For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node 
+-20-on-github-actions-runners/                                                         
+, 이것 무슨 내용이니?                                                                  
+
+⏺ 경고(warning)이고 오류가 아닙니다. 배포는 정상적으로 됐을 거예요.
+
+  내용 요약:
+
+  ▎ "GitHub Actions에서 Node.js 20을 사용하는 액션들이 deprecated 예정입니다. 2026년
+  6월 2일부터 Node.js 24가 기본값이 됩니다."
+
+  즉, 지금 당장은 문제없고 2026년 6월 이후에 강제 전환됩니다.
+
+  미리 대응하려면 워크플로우에 한 줄 추가하면 됩니다:
+
+⏺ Update(.github/workflows/deploy.yml)
+  ⎿  Added 2 lines
+      17  jobs:
+      18    build-and-deploy:
+      19      runs-on: ubuntu-latest
+      20 +    env:
+      21 +      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      22      environment:
+      23        name: github-pages
+      24        url: ${{ steps.deployment.outputs.page_url }}
+
+⏺ 그 전에 — 배포 주소 https://[유저명].github.io/multiImgGen-2603/ 접속은 되시나요?
+
+❯ 에러가 발생하는데, 왜 에러가 발생하는지 맨 아래 로그를 꼭 찍어주면 좋겠어. 그리고    
+에러 발생. Unable to access non-serverless model prompthero/openjourney. Please visit  
+https://api.together.ai/models/prompthero/openjourney to create and start a new        
+dedicated endpoint for the model.                                                      
+
+⏺ 2가지 수정합니다.
+  1. prompthero/openjourney — serverless 미지원 모델이라 제거
+  2. 결과 하단에 에러 로그 패널 추가
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Removed 8 lines
+      109
+      110    // ── Community / Stability (Together AI) ──────────────────────
+      111    {
+      112 -    id: 'dreamshaper-xl',
+      113 -    name: 'DreamShaper XL',
+      114 -    author: 'Lykon',
+      115 -    pricePerImage: 0.001,
+      116 -    modelId: 'prompthero/openjourney',
+      117 -    provider: 'together',
+      118 -  },
+      119 -  {
+      112      id: 'juggernaut-xl',
+      113      name: 'Juggernaut XL',
+      114      author: 'RunDiffusion',
+
+⏺ 이제 ResultsPanel에 에러 로그 패널 추가:
+
+⏺ Update(src/components/ResultsPanel.tsx)
+  ⎿  Added 1 line, removed 1 line
+      1 -import { Download, AlertCircle, Loader2 } from 'lucide-react'
+      1 +import { Download, AlertCircle, Loader2, Terminal } from 'lucide-react'
+      2  import type { GeneratedResult } from '../hooks/useImageGen'
+      3
+      4  interface Props {
+
+⏺ Update(src/components/ResultsPanel.tsx)
+  ⎿  Added 50 lines, removed 26 lines
+      33        )}
+      34
+      35        {!loading && results.length > 0 && (
+      36 -        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4
+         - gap-3">
+      37 -          {results.map((r) => (
+      38 -            <div key={r.modelId} className="group relative rounded-xl
+         -overflow-hidden border border-[#2a2d3a] bg-[#1a1d27]">
+      39 -              {r.error ? (
+      40 -                <div className="aspect-square flex flex-col items-cent
+         -er justify-center gap-2 p-3">
+      41 -                  <AlertCircle size={24} className="text-red-400" />
+      42 -                  <p className="text-xs text-red-400 text-center">{r.e
+         -rror}</p>
+      43 -                </div>
+      44 -              ) : (
+      45 -                <>
+      46 -                  <img src={r.url} alt={r.modelName} className="w-full
+         - aspect-square object-cover" />
+      47 -                  <div className="absolute inset-0 bg-black/0 group-ho
+         -ver:bg-black/40 transition-all flex items-end">
+      48 -                    <div className="w-full p-2 translate-y-full group-
+         -hover:translate-y-0 transition-transform flex items-center justify-bet
+         -ween">
+      49 -                      <span className="text-xs text-white font-medium
+         -truncate max-w-[70%]">{r.modelName}</span>
+      50 -                      <button
+      51 -                        onClick={() => download(r)}
+      52 -                        className="p-1.5 rounded-lg bg-white/20 hover:
+         -bg-white/30 text-white transition-colors"
+      53 -                      >
+      54 -                        <Download size={13} />
+      55 -                      </button>
+      36 +        <>
+      37 +          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols
+         +-4 gap-3">
+      38 +            {results.map((r) => (
+      39 +              <div key={r.modelId} className="group relative rounded-x
+         +l overflow-hidden border border-[#2a2d3a] bg-[#1a1d27]">
+      40 +                {r.error ? (
+      41 +                  <div className="aspect-square flex flex-col items-ce
+         +nter justify-center gap-2 p-3">
+      42 +                    <AlertCircle size={24} className="text-red-400" />
+      43 +                    <p className="text-xs text-red-400 text-center">{r
+         +.error}</p>
+      44 +                  </div>
+      45 +                ) : (
+      46 +                  <>
+      47 +                    <img src={r.url} alt={r.modelName} className="w-fu
+         +ll aspect-square object-cover" />
+      48 +                    <div className="absolute inset-0 bg-black/0 group-
+         +hover:bg-black/40 transition-all flex items-end">
+      49 +                      <div className="w-full p-2 translate-y-full grou
+         +p-hover:translate-y-0 transition-transform flex items-center justify-b
+         +etween">
+      50 +                        <span className="text-xs text-white font-mediu
+         +m truncate max-w-[70%]">{r.modelName}</span>
+      51 +                        <button
+      52 +                          onClick={() => download(r)}
+      53 +                          className="p-1.5 rounded-lg bg-white/20 hove
+         +r:bg-white/30 text-white transition-colors"
+      54 +                        >
+      55 +                          <Download size={13} />
+      56 +                        </button>
+      57 +                      </div>
+      58                      </div>
+      59 +                  </>
+      60 +                )}
+      61 +                <div className="px-2 py-1.5 border-t border-[#2a2d3a]"
+         +>
+      62 +                  <p className="text-xs text-slate-400 truncate">{r.mo
+         +delName}</p>
+      63 +                </div>
+      64 +              </div>
+      65 +            ))}
+      66 +          </div>
+      67 +
+      68 +          {/* error log */}
+      69 +          {results.some((r) => r.error) && (
+      70 +            <div className="mt-4 bg-[#0f1117] border border-red-500/20
+         + rounded-xl overflow-hidden">
+      71 +              <div className="flex items-center gap-2 px-4 py-2 border
+         +-b border-red-500/20 bg-red-500/5">
+      72 +                <Terminal size={13} className="text-red-400" />
+      73 +                <span className="text-xs font-semibold text-red-400">
+         +에러 로그</span>
+      74 +                <span className="text-xs text-slate-500 ml-auto">
+      75 +                  {results.filter((r) => r.error).length}개 실패
+      76 +                </span>
+      77 +              </div>
+      78 +              <div className="p-3 flex flex-col gap-1.5 font-mono text
+         +-xs">
+      79 +                {results.filter((r) => r.error).map((r) => (
+      80 +                  <div key={r.modelId} className="flex gap-3">
+      81 +                    <span className="text-red-500 shrink-0">✗</span>
+      82 +                    <span className="text-slate-400 shrink-0 max-w-[16
+         +0px] truncate">{r.modelName}</span>
+      83 +                    <span className="text-red-300 break-all">{r.error}
+         +</span>
+      84                    </div>
+      58 -                </>
+      59 -              )}
+      60 -              <div className="px-2 py-1.5 border-t border-[#2a2d3a]">
+      61 -                <p className="text-xs text-slate-400 truncate">{r.mode
+         -lName}</p>
+      85 +                ))}
+      86                </div>
+      87              </div>
+      64 -          ))}
+      65 -        </div>
+      88 +          )}
+      89 +        </>
+      90        )}
+      91      </div>
+      92    )
+
+⏺ Bash(npm run build 2>&1 | tail -8)
+  ⎿  transforming...
+     ✓ 1584 modules transformed.
+     rendering chunks...
+     … +5 lines (ctrl+o to expand)
+
+⏺ 완료입니다.
+
+  변경 사항
+
+  1. DreamShaper XL 제거 — prompthero/openjourney는 Together AI serverless 미지원
+  모델이었습니다. (dedicated endpoint 별도 생성 필요한 모델)
+  2. 에러 로그 패널 — 결과 이미지 그리드 아래에 자동으로 표시됩니다:
+  ┌─ 에러 로그 ──────────────── 1개 실패 ─┐
+  │ ✗  DreamShaper XL   Unable to access... │
+  └──────────────────────────────────────────┘
+
+  앞으로 다른 모델도 에러가 나면 어떤 모델에서 왜 실패했는지 바로 확인할 수 있습니다.
+
+✻ Worked for 1m 5s
+
+❯ 다시 검색해서 Together AI에서OpenAI, Google 이미지 모델에 접근이 안되니? 사이트에는  
+모델 명이 있는데..                                                                     
+
+⏺ Explore(Check Together AI image models for OpenAI/Google)
+  ⎿  Done (5 tool uses · 16.6k tokens · 24s)
+  (ctrl+o to expand)
+
+⏺ 결과 정리해드립니다:
+
+  - Google 이미지 모델: Together AI로 접근 가능 ✅ — 단, 현재 앱에 잘못된 모델 ID가
+  들어가 있음
+  - OpenAI 이미지 모델: Together AI에서 미지원 ❌ — OpenAI 자체 API만 가능
+
+  현재 앱의 Google 모델들(gemini-2.0-flash-preview-image-generation 등)은 Google 자체
+  API용 ID라 틀렸습니다. Together AI에서 제공하는 실제 Google 모델로 교체하겠습니다.
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Added 32 lines, removed 14 lines
+      261      provider: 'openai',
+      262    },
+      263
+      264 -  // ── Google ───────────────────────────────────────────────────
+      264 +  // ── Google (via Together AI) ─────────────────────────────────
+      265    {
+      266 -    id: 'gemini-flash-image-25',
+      267 -    name: 'Gemini Flash Image 2.5',
+      266 +    id: 'google-flash-image-25',
+      267 +    name: 'Flash Image 2.5',
+      268      author: 'Google',
+      269      pricePerImage: 0.039,
+      270 -    modelId: 'gemini-2.0-flash-preview-image-generation',
+      271 -    provider: 'google',
+      270 +    modelId: 'google/flash-image-2.5',
+      271 +    provider: 'together',
+      272      isNew: true,
+      273    },
+      274    {
+      275 -    id: 'gemini-3-nano-image',
+      276 -    name: 'Gemini 3 Image',
+      275 +    id: 'google-imagen-40-fast',
+      276 +    name: 'Imagen 4.0 Fast',
+      277      author: 'Google',
+      278 -    pricePerImage: 0.06,
+      279 -    modelId: 'gemini-3.0-nano-image-generation',
+      280 -    provider: 'google',
+      278 +    pricePerImage: 0.02,
+      279 +    modelId: 'google/imagen-4.0-fast',
+      280 +    provider: 'together',
+      281      isNew: true,
+      282    },
+      283    {
+      284 -    id: 'gemini-31-flash-image',
+      285 -    name: 'Gemini 3.1 Flash Image (Nano Banana 2)',
+      284 +    id: 'google-imagen-40-preview',
+      285 +    name: 'Imagen 4.0 Preview',
+      286      author: 'Google',
+      287      pricePerImage: 0.04,
+      288 -    modelId: 'gemini-3.1-flash-image-generation',
+      289 -    provider: 'google',
+      288 +    modelId: 'google/imagen-4.0-preview',
+      289 +    provider: 'together',
+      290      isNew: true,
+      291    },
+      292 +  {
+      293 +    id: 'google-imagen-40-ultra',
+      294 +    name: 'Imagen 4.0 Ultra',
+      295 +    author: 'Google',
+      296 +    pricePerImage: 0.06,
+      297 +    modelId: 'google/imagen-4.0-ultra',
+      298 +    provider: 'together',
+      299 +    isNew: true,
+      300 +  },
+      301 +  {
+      302 +    id: 'google-gemini-3-pro-image',
+      303 +    name: 'Gemini 3 Pro Image',
+      304 +    author: 'Google',
+      305 +    pricePerImage: 0.06,
+      306 +    modelId: 'google/gemini-3-pro-image',
+      307 +    provider: 'together',
+      308 +    isNew: true,
+      309 +  },
+      310
+      311  ]
+      312
+
+❯ prompthero/openjourney는 Together AI serverless 미지원                               
+  모델이었습니다. (dedicated endpoint 별도 생성 필요한 모델), 지금 목록에 있는 모델들  
+전부 확인해서 미지원 모델은 삭제해 주세요. 검색해서 최신 모델로만 넣어주세요.          
+
+⏺ Google 모델 업데이트 완료. 이어서 전체 모델 목록 검증을 진행합니다.
+
+⏺ Explore(Verify all Together AI serverless image models)
+  ⎿  Done (4 tool uses · 17.3k tokens · 22s)
+  (ctrl+o to expand)
+
+⏺ 검증 결과로 전체 모델 목록을 정확하게 재작성합니다.
+
+  주요 발견:
+  - FLUX.2, Juggernaut XL, 기존 HiDream/Qwen/Seedream ID 오류
+  - openai/gpt-image-1.5가 Together AI에서도 가능
+  - Google Imagen 4.0 시리즈, Flash Image 3.1 신규 확인
+  - Lykon/DreamShaper 서버리스 지원 확인
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ 이제 IMAGE_MODELS 전체를 검증된 모델로 교체합니다:
+
+⏺ Write(src/data/imageModels.ts)
+  ⎿  Added 116 lines, removed 147 lines
+       1 -export type Provider = 'together' | 'openai' | 'google'
+       1 +export type Provider = 'together' | 'openai'
+       2
+       3  export interface ImageModel {
+       4    id: string
+       5    name: string
+       6    author: string
+       7 -  pricePerImage: number // USD
+       7 +  pricePerImage: number // USD per image (1024×1024 기준)
+       8    modelId: string
+       9    provider: Provider
+      10 -  description?: string
+      10    isNew?: boolean
+      11  }
+      12
+     ...
+      18  }
+      19
+      20  export const IMAGE_MODELS: ImageModel[] = [
+      22 -  // ── Black Forest Labs (Together AI) ──────────────────────────
+      21 +  // ── Black Forest Labs ────────────────────────────────────────
+      22    {
+      23      id: 'flux1-schnell',
+      24      name: 'FLUX.1 Schnell',
+     ...
+      28      provider: 'together',
+      29    },
+      30    {
+      32 -    id: 'flux1-krea',
+      33 -    name: 'FLUX.1 Krea',
+      31 +    id: 'flux1-krea-dev',
+      32 +    name: 'FLUX.1 Krea [dev]',
+      33      author: 'Black Forest Labs',
+      34      pricePerImage: 0.025,
+      36 -    modelId: 'black-forest-labs/FLUX.1-krea',
+      35 +    modelId: 'black-forest-labs/FLUX.1-krea-dev',
+      36      provider: 'together',
+      37    },
+      38    {
+      40 -    id: 'flux1-dev',
+      41 -    name: 'FLUX.1 [dev]',
+      42 -    author: 'Black Forest Labs',
+      43 -    pricePerImage: 0.025,
+      44 -    modelId: 'black-forest-labs/FLUX.1-dev',
+      45 -    provider: 'together',
+      46 -  },
+      47 -  {
+      39      id: 'flux11-pro',
+      49 -    name: 'FLUX 1.1 Pro',
+      40 +    name: 'FLUX.1.1 Pro',
+      41      author: 'Black Forest Labs',
+      42      pricePerImage: 0.04,
+      43      modelId: 'black-forest-labs/FLUX.1.1-pro',
+     ...
+       45    },
+       46    {
+       47      id: 'flux1-kontext-pro',
+       57 -    name: 'FLUX.1 Kontext [pro]',
+       48 +    name: 'FLUX.1 Kontext Pro',
+       49      author: 'Black Forest Labs',
+       50      pricePerImage: 0.04,
+       51      modelId: 'black-forest-labs/FLUX.1-kontext-pro',
+       52      provider: 'together',
+       62 -    isNew: true,
+       53    },
+       54    {
+       55      id: 'flux1-kontext-max',
+       66 -    name: 'FLUX.1 Kontext [max]',
+       56 +    name: 'FLUX.1 Kontext Max',
+       57      author: 'Black Forest Labs',
+       58      pricePerImage: 0.08,
+       59      modelId: 'black-forest-labs/FLUX.1-kontext-max',
+       60      provider: 'together',
+       71 -    isNew: true,
+       61    },
+       62 +
+       63 +  // ── Stability AI ─────────────────────────────────────────────
+       64    {
+       74 -    id: 'flux2-dev',
+       75 -    name: 'FLUX.2 [dev]',
+       76 -    author: 'Black Forest Labs',
+       77 -    pricePerImage: 0.025,
+       78 -    modelId: 'black-forest-labs/FLUX.2-dev',
+       65 +    id: 'sd-xl',
+       66 +    name: 'Stable Diffusion XL',
+       67 +    author: 'Stability AI',
+       68 +    pricePerImage: 0.002,
+       69 +    modelId: 'stabilityai/stable-diffusion-xl-base-1.0',
+       70      provider: 'together',
+       80 -    isNew: true,
+       71    },
+       72    {
+       83 -    id: 'flux2-flex',
+       84 -    name: 'FLUX.2 [flex]',
+       85 -    author: 'Black Forest Labs',
+       86 -    pricePerImage: 0.035,
+       87 -    modelId: 'black-forest-labs/FLUX.2-flex',
+       73 +    id: 'sd3-medium',
+       74 +    name: 'Stable Diffusion 3 Medium',
+       75 +    author: 'Stability AI',
+       76 +    pricePerImage: 0.002,
+       77 +    modelId: 'stabilityai/stable-diffusion-3-medium',
+       78      provider: 'together',
+       89 -    isNew: true,
+       79    },
+       80 +
+       81 +  // ── Lykon ────────────────────────────────────────────────────
+       82    {
+       92 -    id: 'flux2-pro',
+       93 -    name: 'FLUX.2 [pro]',
+       94 -    author: 'Black Forest Labs',
+       95 -    pricePerImage: 0.05,
+       96 -    modelId: 'black-forest-labs/FLUX.2-pro',
+       83 +    id: 'dreamshaper',
+       84 +    name: 'DreamShaper',
+       85 +    author: 'Lykon',
+       86 +    pricePerImage: 0.001,
+       87 +    modelId: 'Lykon/DreamShaper',
+       88      provider: 'together',
+       98 -    isNew: true,
+       89    },
+      100 -  {
+      101 -    id: 'flux2-max',
+      102 -    name: 'FLUX.2 [max]',
+      103 -    author: 'Black Forest Labs',
+      104 -    pricePerImage: 0.08,
+      105 -    modelId: 'black-forest-labs/FLUX.2-max',
+      106 -    provider: 'together',
+      107 -    isNew: true,
+      108 -  },
+       90
+      110 -  // ── Community / Stability (Together AI) ──────────────────────
+       91 +  // ── RunDiffusion ─────────────────────────────────────────────
+       92    {
+      112 -    id: 'juggernaut-xl',
+      113 -    name: 'Juggernaut XL',
+       93 +    id: 'juggernaut-lightning',
+       94 +    name: 'Juggernaut Lightning Flux',
+       95      author: 'RunDiffusion',
+       96      pricePerImage: 0.002,
+      116 -    modelId: 'RunDiffusion/Juggernaut-XL-v9',
+       97 +    modelId: 'RunDiffusion/Juggernaut-Lightning-Flux',
+       98      provider: 'together',
+       99    },
+      100    {
+      120 -    id: 'sd-xl',
+      121 -    name: 'SD XL',
+      122 -    author: 'Stability AI',
+      123 -    pricePerImage: 0.002,
+      124 -    modelId: 'stabilityai/stable-diffusion-xl-base-1.0',
+      125 -    provider: 'together',
+      126 -  },
+      127 -  {
+      128 -    id: 'sd3-medium',
+      129 -    name: 'SD3 Medium',
+      130 -    author: 'Stability AI',
+      131 -    pricePerImage: 0.002,
+      132 -    modelId: 'stabilityai/stable-diffusion-3-medium-diffusers',
+      133 -    provider: 'together',
+      134 -  },
+      135 -  {
+      136 -    id: 'juggernaut-pro',
+      137 -    name: 'Juggernaut Pro',
+      101 +    id: 'juggernaut-pro-flux',
+      102 +    name: 'Juggernaut Pro Flux',
+      103      author: 'RunDiffusion',
+      104      pricePerImage: 0.005,
+      140 -    modelId: 'RunDiffusion/Juggernaut-Pro-v10',
+      105 +    modelId: 'RunDiffusion/Juggernaut-pro-flux',
+      106      provider: 'together',
+      107    },
+      108
+      144 -  // ── HiDream (Together AI) ────────────────────────────────────
+      109 +  // ── HiDream ──────────────────────────────────────────────────
+      110    {
+      111      id: 'hidream-fast',
+      147 -    name: 'HiDream Fast',
+      112 +    name: 'HiDream I1 Fast',
+      113      author: 'HiDream',
+      114      pricePerImage: 0.003,
+      150 -    modelId: 'hidream-ai/hidream-i1-fast',
+      115 +    modelId: 'HiDream-ai/HiDream-I1-Fast',
+      116      provider: 'together',
+      117    },
+      118    {
+      119      id: 'hidream-dev',
+      155 -    name: 'HiDream Dev',
+      120 +    name: 'HiDream I1 Dev',
+      121      author: 'HiDream',
+      122      pricePerImage: 0.005,
+      158 -    modelId: 'hidream-ai/hidream-i1-dev',
+      123 +    modelId: 'HiDream-ai/HiDream-I1-Dev',
+      124      provider: 'together',
+      125    },
+      126    {
+      127      id: 'hidream-full',
+      163 -    name: 'HiDream Full',
+      128 +    name: 'HiDream I1 Full',
+      129      author: 'HiDream',
+      130      pricePerImage: 0.009,
+      166 -    modelId: 'hidream-ai/hidream-i1-full',
+      131 +    modelId: 'HiDream-ai/HiDream-I1-Full',
+      132      provider: 'together',
+      133    },
+      134
+      170 -  // ── Qwen (Together AI) ───────────────────────────────────────
+      135 +  // ── Qwen ─────────────────────────────────────────────────────
+      136    {
+      137      id: 'qwen-image',
+      138      name: 'Qwen Image',
+      139      author: 'Qwen',
+      140      pricePerImage: 0.006,
+      176 -    modelId: 'Qwen/Qwen2-VL-72B-Instruct',
+      141 +    modelId: 'Qwen/Qwen-Image',
+      142      provider: 'together',
+      143    },
+      144    {
+     ...
+      146      name: 'Qwen Image 2.0',
+      147      author: 'Qwen',
+      148      pricePerImage: 0.008,
+      184 -    modelId: 'Qwen/QwenImage-2.0',
+      149 +    modelId: 'Qwen/Qwen-Image-2.0',
+      150      provider: 'together',
+      151      isNew: true,
+      152    },
+      188 -  {
+      189 -    id: 'qwen-image-2-pro',
+      190 -    name: 'Qwen Image 2.0 Pro',
+      191 -    author: 'Qwen',
+      192 -    pricePerImage: 0.012,
+      193 -    modelId: 'Qwen/QwenImage-2.0-Pro',
+      194 -    provider: 'together',
+      195 -    isNew: true,
+      196 -  },
+      153
+      198 -  // ── ByteDance (Together AI) ──────────────────────────────────
+      154 +  // ── ByteDance ─────────────────────────────────────────────────
+      155    {
+      156      id: 'seedream-30',
+      157      name: 'Seedream 3.0',
+      158      author: 'ByteDance',
+      159      pricePerImage: 0.018,
+      204 -    modelId: 'ByteDance/Seedream-3.0',
+      160 +    modelId: 'ByteDance-Seed/Seedream-3.0',
+      161      provider: 'together',
+      162    },
+      163    {
+      164      id: 'seedream-40',
+      165      name: 'Seedream 4.0',
+      166      author: 'ByteDance',
+      211 -    pricePerImage: 0.03,
+      212 -    modelId: 'ByteDance/Seedream-4.0',
+      167 +    pricePerImage: 0.030,
+      168 +    modelId: 'ByteDance-Seed/Seedream-4.0',
+      169      provider: 'together',
+      170 +    isNew: true,
+      171    },
+      172
+      216 -  // ── Wan-AI (Together AI) ─────────────────────────────────────
+      173 +  // ── Wan-AI ────────────────────────────────────────────────────
+      174    {
+      175      id: 'wan-image-26',
+      176      name: 'Wan 2.6 Image',
+      177      author: 'Wan-AI',
+      178      pricePerImage: 0.008,
+      222 -    modelId: 'Wan-AI/Wan2.6-Image',
+      179 +    modelId: 'Wan-AI/Wan-2.6-Image',
+      180      provider: 'together',
+      181      isNew: true,
+      182    },
+      183
+      227 -  // ── Ideogram (Together AI) ───────────────────────────────────
+      184 +  // ── Ideogram ──────────────────────────────────────────────────
+      185    {
+      186      id: 'ideogram-30',
+      187      name: 'Ideogram 3.0',
+      188      author: 'Ideogram',
+      232 -    pricePerImage: 0.06,
+      233 -    modelId: 'ideogram-ai/ideogram-v3',
+      189 +    pricePerImage: 0.060,
+      190 +    modelId: 'ideogram/ideogram-3.0',
+      191      provider: 'together',
+      192    },
+      193
+      237 -  // ── OpenAI ───────────────────────────────────────────────────
+      194 +  // ── Google (via Together AI) ──────────────────────────────────
+      195    {
+      239 -    id: 'gpt-image-15',
+      240 -    name: 'GPT Image 1.5',
+      241 -    author: 'OpenAI',
+      242 -    pricePerImage: 0.04,
+      243 -    modelId: 'gpt-image-1',
+      244 -    provider: 'openai',
+      196 +    id: 'google-imagen-40-fast',
+      197 +    name: 'Imagen 4.0 Fast',
+      198 +    author: 'Google',
+      199 +    pricePerImage: 0.020,
+      200 +    modelId: 'google/imagen-4.0-fast',
+      201 +    provider: 'together',
+      202      isNew: true,
+      203    },
+      204    {
+      248 -    id: 'dall-e-3',
+      249 -    name: 'DALL·E 3',
+      250 -    author: 'OpenAI',
+      251 -    pricePerImage: 0.04,
+      252 -    modelId: 'dall-e-3',
+      253 -    provider: 'openai',
+      254 -  },
+      255 -  {
+      256 -    id: 'dall-e-3-hd',
+      257 -    name: 'DALL·E 3 HD',
+      258 -    author: 'OpenAI',
+      259 -    pricePerImage: 0.08,
+      260 -    modelId: 'dall-e-3-hd',
+      261 -    provider: 'openai',
+      262 -  },
+      263 - 
+      264 -  // ── Google (via Together AI) ─────────────────────────────────
+      265 -  {
+      205      id: 'google-flash-image-25',
+      206      name: 'Flash Image 2.5',
+      207      author: 'Google',
+     ...
+      211      isNew: true,
+      212    },
+      213    {
+      275 -    id: 'google-imagen-40-fast',
+      276 -    name: 'Imagen 4.0 Fast',
+      214 +    id: 'google-flash-image-31',
+      215 +    name: 'Flash Image 3.1',
+      216      author: 'Google',
+      278 -    pricePerImage: 0.02,
+      279 -    modelId: 'google/imagen-4.0-fast',
+      217 +    pricePerImage: 0.039,
+      218 +    modelId: 'google/flash-image-3.1',
+      219      provider: 'together',
+      220      isNew: true,
+      221    },
+     ...
+      223      id: 'google-imagen-40-preview',
+      224      name: 'Imagen 4.0 Preview',
+      225      author: 'Google',
+      287 -    pricePerImage: 0.04,
+      226 +    pricePerImage: 0.040,
+      227      modelId: 'google/imagen-4.0-preview',
+      228      provider: 'together',
+      229      isNew: true,
+     ...
+      232      id: 'google-imagen-40-ultra',
+      233      name: 'Imagen 4.0 Ultra',
+      234      author: 'Google',
+      296 -    pricePerImage: 0.06,
+      235 +    pricePerImage: 0.060,
+      236      modelId: 'google/imagen-4.0-ultra',
+      237      provider: 'together',
+      238      isNew: true,
+     ...
+      241      id: 'google-gemini-3-pro-image',
+      242      name: 'Gemini 3 Pro Image',
+      243      author: 'Google',
+      305 -    pricePerImage: 0.06,
+      244 +    pricePerImage: 0.060,
+      245      modelId: 'google/gemini-3-pro-image',
+      246      provider: 'together',
+      247      isNew: true,
+      248    },
+      249
+      250 +  // ── OpenAI ────────────────────────────────────────────────────
+      251 +  {
+      252 +    id: 'gpt-image-15-together',
+      253 +    name: 'GPT Image 1.5',
+      254 +    author: 'OpenAI',
+      255 +    pricePerImage: 0.04,
+      256 +    modelId: 'openai/gpt-image-1.5',
+      257 +    provider: 'together',
+      258 +    isNew: true,
+      259 +  },
+      260 +  {
+      261 +    id: 'gpt-image-15',
+      262 +    name: 'GPT Image 1.5 (Direct)',
+      263 +    author: 'OpenAI',
+      264 +    pricePerImage: 0.04,
+      265 +    modelId: 'gpt-image-1',
+      266 +    provider: 'openai',
+      267 +    isNew: true,
+      268 +  },
+      269 +  {
+      270 +    id: 'dall-e-3',
+      271 +    name: 'DALL·E 3',
+      272 +    author: 'OpenAI',
+      273 +    pricePerImage: 0.04,
+      274 +    modelId: 'dall-e-3',
+      275 +    provider: 'openai',
+      276 +  },
+      277 +  {
+      278 +    id: 'dall-e-3-hd',
+      279 +    name: 'DALL·E 3 HD',
+      280 +    author: 'OpenAI',
+      281 +    pricePerImage: 0.08,
+      282 +    modelId: 'dall-e-3-hd',
+      283 +    provider: 'openai',
+      284 +  },
+      285  ]
+      286
+      287  export const COMPANY_COLORS: Record<string, string> = {
+      288    'Black Forest Labs': '#7c3aed',
+      315 -  'Lykon': '#0ea5e9',
+      316 -  'RunDiffusion': '#f59e0b',
+      317 -  'Stability AI': '#10b981',
+      318 -  'HiDream': '#ec4899',
+      319 -  'Qwen': '#6366f1',
+      320 -  'ByteDance': '#ef4444',
+      321 -  'Wan-AI': '#14b8a6',
+      322 -  'Ideogram': '#f97316',
+      323 -  'OpenAI': '#10a37f',
+      324 -  'Google': '#4285f4',
+      289 +  'Lykon':            '#0ea5e9',
+      290 +  'RunDiffusion':     '#f59e0b',
+      291 +  'Stability AI':     '#10b981',
+      292 +  'HiDream':          '#ec4899',
+      293 +  'Qwen':             '#6366f1',
+      294 +  'ByteDance':        '#ef4444',
+      295 +  'Wan-AI':           '#14b8a6',
+      296 +  'Ideogram':         '#f97316',
+      297 +  'Google':           '#4285f4',
+      298 +  'OpenAI':           '#10a37f',
+      299  }
+      300
+      301  export const PROVIDER_LABELS: Record<Provider, string> = {
+      302    together: 'TOGETHER_API_KEY',
+      329 -  openai: 'OPENAI_API_KEY',
+      330 -  google: 'GOOGLE_API_KEY',
+      303 +  openai:   'OPENAI_API_KEY',
+      304  }
+      305
+      306  export const PROVIDER_META: Record<Provider, { label: string; color:
+           string }> = {
+      307    together: { label: 'Together AI', color: '#7c3aed' },
+      308    openai:   { label: 'OpenAI',      color: '#10a37f' },
+      336 -  google:   { label: 'Google',      color: '#4285f4' },
+      309  }
+      310
+      311  export interface ProviderGroup {
+     ...
+      313    label: string
+      314    color: string
+      315    apiKeyLabel: string
+      344 -  /** sub-groups by author (only relevant for Together AI) */
+      316    companies: { name: string; models: ImageModel[] }[]
+      317  }
+      318
+      319  export function groupByProvider(models: ImageModel[]): ProviderGroup[
+           ] {
+      349 -  const order: Provider[] = ['together', 'openai', 'google']
+      320 +  const order: Provider[] = ['together', 'openai']
+      321    return order
+      322      .map((p) => {
+      323        const pModels = models.filter((m) => m.provider === p)
+      353 -      // sub-group by author
+      324        const companyMap = new Map<string, ImageModel[]>()
+      325        for (const m of pModels) {
+      326          if (!companyMap.has(m.author)) companyMap.set(m.author, [])
+     ...
+      337      .filter((g) => g.companies.length > 0)
+      338  }
+      339
+      370 -// kept for compat but not used in main UI
+      340  export function groupByCompany(models: ImageModel[]): CompanyGroup[]
+           {
+      341    const map = new Map<string, ImageModel[]>()
+      342    for (const model of models) {
+
+⏺ Provider 타입에서 google이 빠졌으니 useImageGen.ts와 ApiKeyInput.tsx도
+  업데이트합니다:
+
+⏺ Update(src/hooks/useImageGen.ts)
+  ⎿  Removed 1 line
+      11  export interface ApiKeys {
+      12    together: string
+      13    openai: string
+      14 -  google: string
+      14  }
+      15
+      16  interface ModelRequest {
+
+⏺ Update(src/hooks/useImageGen.ts)
+  ⎿  Removed 2 lines
+      131
+      132      const needsTogether = models.some((m) => m.provider === 'together
+           ')
+      133      const needsOpenAI   = models.some((m) => m.provider === 'openai')
+      134 -    const needsGoogle   = models.some((m) => m.provider === 'google')
+      134      if (needsTogether && !apiKeys.together.trim()) { setError('Togeth
+           er AI API Key를 입력해주세요.'); return }
+      135      if (needsOpenAI   && !apiKeys.openai.trim())   { setError('OpenAI
+            API Key를 입력해주세요.'); return }
+      137 -    if (needsGoogle   && !apiKeys.google.trim())   { setError('Google
+          - API Key를 입력해주세요.'); return }
+      136
+      137      setError(null)
+      138      setLoading(true)
+
+⏺ Update(src/hooks/useImageGen.ts)
+  ⎿  Removed 1 line
+      140
+      141      const tasks = models.map((m) => {
+      142        if (m.provider === 'openai') return generateOpenAI(apiKeys.open
+           ai, m.modelId, m.name, prompt, width, height)
+      143 -      if (m.provider === 'google') return generateGoogle(apiKeys.goog
+          -le, m.modelId, m.name, prompt)
+      143        return generateTogether(apiKeys.together, m.modelId, m.name, pr
+           ompt, width, height, steps)
+      144      })
+      145
+
+⏺ Google 관련 함수와 불필요한 코드도 제거합니다:
+
+⏺ Update(src/hooks/useImageGen.ts)
+  ⎿  Removed 37 lines
+       77    return { modelId, modelName, url }
+       78  }
+       79
+       80 -// ── Google Gemini ─────────────────────────────────────────────
+       81 -async function generateGoogle(
+       82 -  apiKey: string,
+       83 -  modelId: string,
+       84 -  modelName: string,
+       85 -  prompt: string,
+       86 -): Promise<GeneratedResult> {
+       87 -  const res = await fetch(
+       88 -    `https://generativelanguage.googleapis.com/v1beta/models/${modelI
+          -d}:generateContent?key=${apiKey}`,
+       89 -    {
+       90 -      method: 'POST',
+       91 -      headers: { 'Content-Type': 'application/json' },
+       92 -      body: JSON.stringify({
+       93 -        contents: [{ parts: [{ text: prompt }] }],
+       94 -        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
+       95 -      }),
+       96 -    },
+       97 -  )
+       98 -  if (!res.ok) {
+       99 -    const txt = await res.text()
+      100 -    let msg = `${res.status}`
+      101 -    try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+      102 -    return { modelId, modelName, url: '', error: msg }
+      103 -  }
+      104 -  const data = await res.json()
+      105 -  const parts = data?.candidates?.[0]?.content?.parts ?? []
+      106 -  const imgPart = parts.find((p: { inlineData?: { mimeType?: string;
+          -data?: string } }) =>
+      107 -    p.inlineData?.mimeType?.startsWith('image'),
+      108 -  )
+      109 -  if (!imgPart?.inlineData?.data)
+      110 -    return { modelId, modelName, url: '', error: '이미지 데이터 없음'
+          - }
+      111 -  return {
+      112 -    modelId, modelName,
+      113 -    url: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inline
+          -Data.data}`,
+      114 -  }
+      115 -}
+      116 - 
+       80  // ── Main hook ─────────────────────────────────────────────────
+       81  export function useImageGen(apiKeys: ApiKeys) {
+       82    const [loading, setLoading] = useState(false)
+
+⏺ ApiKeyInput.tsx에서 Google 항목 제거:
+
+⏺ Update(src/components/ApiKeyInput.tsx)
+  ⎿  Removed 1 line
+      10  const PROVIDERS = [
+      11    { key: 'together' as keyof ApiKeys, label: 'Together AI', color: '#7
+          c3aed' },
+      12    { key: 'openai' as keyof ApiKeys, label: 'OpenAI', color: '#10a37f'
+          },
+      13 -  { key: 'google' as keyof ApiKeys, label: 'Google', color: '#4285f4'
+         -},
+      13  ]
+      14
+      15  export default function ApiKeyInput({ apiKeys, onChange }: Props) {
+
+⏺ App.tsx의 ApiKeys 초기화에서 google 제거:
+
+⏺ Update(src/App.tsx)
+  ⎿  Removed 1 line
+      17    return {
+      18      together: sessionStorage.getItem('key_together') ?? '',
+      19      openai:   sessionStorage.getItem('key_openai')   ?? '',
+      20 -    google:   sessionStorage.getItem('key_google')   ?? '',
+      20    }
+      21  }
+      22
+
+⏺ Update(src/App.tsx)
+  ⎿  Removed 1 line
+      40      // sessionStorage — wiped when the browser tab/window closes (no l
+          ocalStorage used)
+      41      sessionStorage.setItem('key_together', keys.together)
+      42      sessionStorage.setItem('key_openai',   keys.openai)
+      43 -    sessionStorage.setItem('key_google',   keys.google)
+      43    }
+      44
+      45    function toggleModel(id: string) {
+
+⏺ Bash(npm run build 2>&1 | tail -10)
+  ⎿  vite v6.4.1 building for production...
+     transforming...
+     ✓ 1584 modules transformed.
+     … +6 lines (ctrl+o to expand)
+
+⏺ 완료입니다. 변경 요약:
+
+  제거된 모델 (미지원/잘못된 ID)
+  - FLUX.1 [dev], FLUX.2 계열 전부 — ID 미확인
+  - Juggernaut XL/Pro (구버전) → 최신 Flux 버전으로 교체
+  - Qwen2-VL-72B (채팅 모델이었음!), Qwen Image 2.0 Pro
+  - Seedream/HiDream 기존 ID → 대소문자 수정된 정확한 ID로 교체
+  - ideogram-ai/ideogram-v3 → ideogram/ideogram-3.0
+  - Google 전용 API 모델 전부 제거
+
+  추가/수정된 모델
+  - Google Imagen 4.0 Fast / Preview / Ultra (Together AI로)
+  - Google Flash Image 2.5 / 3.1 (Together AI로)
+  - GPT Image 1.5 (Together AI 경로 + OpenAI Direct 둘 다)
+  - DreamShaper 복구 (Lykon/DreamShaper)
+
+  구조 변경
+  - Provider 타입: 'together' | 'openai' (google 제거)
+  - API Keys 드롭다운: Together AI + OpenAI 2개로 단순화
+
+✻ Crunched for 4m 28s
+
+❯ Unsupported use of 'steps' parameter. This parameter is not supported for the        
+selected model.                                                                        
+                                                                                       
+Flash Image 2.5                                                                        
+                                                                                       
+Unknown parameter: 'response_format'.                                                  
+                                                                                       
+GPT Image 1.5 (Direct), 이건 왜?                                                       
+
+⏺ 두 가지 원인이 다릅니다.
+
+  1. Flash Image 2.5 — Google 모델은 steps 파라미터 미지원
+  2. GPT Image 1.5 (Direct) — gpt-image-1 모델은 response_format 파라미터 미지원
+
+  모델 데이터에 noSteps 플래그 추가 + OpenAI 호출 수정으로 해결합니다.
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Added 1 line
+       7    pricePerImage: number // USD per image (1024×1024 기준)
+       8    modelId: string
+       9    provider: Provider
+      10 +  noSteps?: boolean   // true: steps 파라미터 미지원 모델
+      11    isNew?: boolean
+      12  }
+      13
+
+⏺ steps 미지원 모델들에 noSteps: true 추가:
+
+⏺ Update(src/data/imageModels.ts)
+  ⎿  Added 13 lines
+      141      pricePerImage: 0.006,
+      142      modelId: 'Qwen/Qwen-Image',
+      143      provider: 'together',
+      144 +    noSteps: true,
+      145    },
+      146    {
+      147      id: 'qwen-image-2',
+     ...
+      150      pricePerImage: 0.008,
+      151      modelId: 'Qwen/Qwen-Image-2.0',
+      152      provider: 'together',
+      153 +    noSteps: true,
+      154      isNew: true,
+      155    },
+      156
+     ...
+      162      pricePerImage: 0.018,
+      163      modelId: 'ByteDance-Seed/Seedream-3.0',
+      164      provider: 'together',
+      165 +    noSteps: true,
+      166    },
+      167    {
+      168      id: 'seedream-40',
+     ...
+      171      pricePerImage: 0.030,
+      172      modelId: 'ByteDance-Seed/Seedream-4.0',
+      173      provider: 'together',
+      174 +    noSteps: true,
+      175      isNew: true,
+      176    },
+      177
+     ...
+      183      pricePerImage: 0.008,
+      184      modelId: 'Wan-AI/Wan-2.6-Image',
+      185      provider: 'together',
+      186 +    noSteps: true,
+      187      isNew: true,
+      188    },
+      189
+     ...
+      195      pricePerImage: 0.060,
+      196      modelId: 'ideogram/ideogram-3.0',
+      197      provider: 'together',
+      198 +    noSteps: true,
+      199    },
+      200
+      201    // ── Google (via Together AI) ──────────────────────────────────
+     ...
+      206      pricePerImage: 0.020,
+      207      modelId: 'google/imagen-4.0-fast',
+      208      provider: 'together',
+      209 +    noSteps: true,
+      210      isNew: true,
+      211    },
+      212    {
+     ...
+      216      pricePerImage: 0.039,
+      217      modelId: 'google/flash-image-2.5',
+      218      provider: 'together',
+      219 +    noSteps: true,
+      220      isNew: true,
+      221    },
+      222    {
+     ...
+      226      pricePerImage: 0.039,
+      227      modelId: 'google/flash-image-3.1',
+      228      provider: 'together',
+      229 +    noSteps: true,
+      230      isNew: true,
+      231    },
+      232    {
+     ...
+      236      pricePerImage: 0.040,
+      237      modelId: 'google/imagen-4.0-preview',
+      238      provider: 'together',
+      239 +    noSteps: true,
+      240      isNew: true,
+      241    },
+      242    {
+     ...
+      246      pricePerImage: 0.060,
+      247      modelId: 'google/imagen-4.0-ultra',
+      248      provider: 'together',
+      249 +    noSteps: true,
+      250      isNew: true,
+      251    },
+      252    {
+     ...
+      256      pricePerImage: 0.060,
+      257      modelId: 'google/gemini-3-pro-image',
+      258      provider: 'together',
+      259 +    noSteps: true,
+      260      isNew: true,
+      261    },
+      262
+     ...
+      268      pricePerImage: 0.04,
+      269      modelId: 'openai/gpt-image-1.5',
+      270      provider: 'together',
+      271 +    noSteps: true,
+      272      isNew: true,
+      273    },
+      274    {
+
+⏺ 이제 useImageGen.ts에서 noSteps 반영 + OpenAI gpt-image-1 response_format 제거:
+
+  Read 1 file (ctrl+o to expand)
+
+⏺ Update(src/hooks/useImageGen.ts)
+  ⎿  Added 1 line
+      17    modelId: string
+      18    name: string
+      19    provider: Provider
+      20 +  noSteps?: boolean
+      21  }
+      22
+      23  // ── Together AI ───────────────────────────────────────────────
+
+⏺ Update(src/hooks/useImageGen.ts)
+  ⎿  Added 5 lines, removed 1 line
+      29    width: number,
+      30    height: number,
+      31    steps: number,
+      32 +  noSteps: boolean,
+      33  ): Promise<GeneratedResult> {
+      34 +  const body: Record<string, unknown> = { model: modelId, prompt, widt
+         +h, height, n: 1, response_format: 'b64_json' }
+      35 +  if (!noSteps) body.steps = steps
+      36 +
+      37    const res = await fetch('https://api.together.xyz/v1/images/generati
+          ons', {
+      38      method: 'POST',
+      39      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'app
+          lication/json' },
+      36 -    body: JSON.stringify({ model: modelId, prompt, width, height, step
+         -s, n: 1, response_format: 'b64_json' }),
+      40 +    body: JSON.stringify(body),
+      41    })
+      42    if (!res.ok) {
+      43      const txt = await res.text()
+
+⏺ OpenAI gpt-image-1의 response_format 제거:
+
+⏺ Update(src/hooks/useImageGen.ts)
+  ⎿  Added 6 lines, removed 1 line
+      65      : `${width}x${height}`
+      66    const quality = modelId.endsWith('-hd') ? 'hd' : 'standard'
+      67    const realModelId = modelId.replace(/-hd$/, '')
+      68 +  // gpt-image-1 does not support response_format; dall-e-3 supports b
+         +64_json
+      69 +  const supportsResponseFormat = realModelId.startsWith('dall-e')
+      70 +  const body: Record<string, unknown> = { model: realModelId, prompt,
+         +n: 1, size, quality }
+      71 +  if (supportsResponseFormat) body.response_format = 'b64_json'
+      72 +
+      73    const res = await fetch('https://api.openai.com/v1/images/generation
+          s', {
+      74      method: 'POST',
+      75      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'app
+          lication/json' },
+      71 -    body: JSON.stringify({ model: realModelId, prompt, n: 1, size, qua
+         -lity, response_format: 'b64_json' }),
+      76 +    body: JSON.stringify(body),
+      77    })
+      78    if (!res.ok) {
+      79      const txt = await res.text()
+
+⏺ generateAll에서 noSteps 전달:
+
+⏺ Update(src/hooks/useImageGen.ts)
+  ⎿  Added 1 line, removed 1 line
+      113
+      114      const tasks = models.map((m) => {
+      115        if (m.provider === 'openai') return generateOpenAI(apiKeys.open
+           ai, m.modelId, m.name, prompt, width, height)
+      116 -      return generateTogether(apiKeys.together, m.modelId, m.name, pr
+          -ompt, width, height, steps)
+      116 +      return generateTogether(apiKeys.together, m.modelId, m.name, pr
+          +ompt, width, height, steps, m.noSteps ?? false)
+      117      })
+      118
+      119      const settled = await Promise.allSettled(tasks)
+
+⏺ App.tsx에서 모델 선택 시 noSteps 전달:
+
+⏺ Update(src/App.tsx)
+  ⎿  Added 1 line, removed 1 line
+      68      const capped = unlocked ? selectedModels : selectedModels.slice(0,
+           remaining as number)
+      69      if (!consume(capped.length)) return
+      70      generateAll(
+      71 -      capped.map((m) => ({ modelId: m.modelId, name: m.name, provider:
+         - m.provider })),
+      71 +      capped.map((m) => ({ modelId: m.modelId, name: m.name, provider:
+         + m.provider, noSteps: m.noSteps })),
+      72        prompt, width, height, steps,
+      73      )
+      74    }
+
+⏺ Bash(npm run build 2>&1 | tail -8)
+  ⎿  transforming...
+     ✓ 1584 modules transformed.
+     rendering chunks...
+     … +5 lines (ctrl+o to expand)
+
+⏺ 완료입니다.
+
+  ┌─────────────────────┬─────────────────────────────┬────────────────────────────┐
+  │        문제         │            원인             │            수정            │
+  ├─────────────────────┼─────────────────────────────┼────────────────────────────┤
+  │ Flash Image 2.5     │ Google/Qwen/ByteDance 등    │ 모델에 noSteps: true       │
+  │ steps 오류          │ 비확산 모델은 steps 미지원  │ 플래그 추가, API 호출 시   │
+  │                     │                             │ 생략                       │
+  ├─────────────────────┼─────────────────────────────┼────────────────────────────┤
+  │ GPT Image 1.5       │ gpt-image-1은               │ DALL·E 3만                 │
+  │ response_format     │ response_format 파라미터    │ response_format:           │
+  │ 오류                │ 미지원                      │ 'b64_json' 전송,           │
+  │                     │                             │ gpt-image-1은 생략         │
+  └─────────────────────┴─────────────────────────────┴────────────────────────────┘
+
+  noSteps: true 적용 모델: Qwen, ByteDance, Wan-AI, Ideogram, Google 전체
