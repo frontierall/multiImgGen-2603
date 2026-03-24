@@ -7,6 +7,7 @@ export interface ImageModel {
   pricePerImage: number // USD per image (1024×1024 기준)
   modelId: string
   provider: Provider
+  noSteps?: boolean   // true: steps 파라미터 미지원 모델
   isNew?: boolean
 }
 
@@ -140,6 +141,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.006,
     modelId: 'Qwen/Qwen-Image',
     provider: 'together',
+    noSteps: true,
   },
   {
     id: 'qwen-image-2',
@@ -148,6 +150,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.008,
     modelId: 'Qwen/Qwen-Image-2.0',
     provider: 'together',
+    noSteps: true,
     isNew: true,
   },
 
@@ -159,6 +162,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.018,
     modelId: 'ByteDance-Seed/Seedream-3.0',
     provider: 'together',
+    noSteps: true,
   },
   {
     id: 'seedream-40',
@@ -167,6 +171,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.030,
     modelId: 'ByteDance-Seed/Seedream-4.0',
     provider: 'together',
+    noSteps: true,
     isNew: true,
   },
 
@@ -178,6 +183,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.008,
     modelId: 'Wan-AI/Wan-2.6-Image',
     provider: 'together',
+    noSteps: true,
     isNew: true,
   },
 
@@ -189,61 +195,68 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.060,
     modelId: 'ideogram/ideogram-3.0',
     provider: 'together',
+    noSteps: true,
   },
 
   // ── Google (via Together AI) ──────────────────────────────────
   {
     id: 'google-imagen-40-fast',
-    name: 'Imagen 4.0 Fast',
+    name: 'Imagen 4.0 Fast (나노 바나나 Fast)',
     author: 'Google',
     pricePerImage: 0.020,
     modelId: 'google/imagen-4.0-fast',
     provider: 'together',
+    noSteps: true,
     isNew: true,
   },
   {
     id: 'google-flash-image-25',
-    name: 'Flash Image 2.5',
+    name: 'Flash Image 2.5 (나노 바나나 2)',
     author: 'Google',
     pricePerImage: 0.039,
     modelId: 'google/flash-image-2.5',
     provider: 'together',
+    noSteps: true,
     isNew: true,
   },
   {
     id: 'google-flash-image-31',
-    name: 'Flash Image 3.1',
+    name: 'Flash Image 3.1 (나노 바나나 3)',
     author: 'Google',
     pricePerImage: 0.039,
     modelId: 'google/flash-image-3.1',
     provider: 'together',
+    noSteps: true,
     isNew: true,
   },
   {
     id: 'google-imagen-40-preview',
-    name: 'Imagen 4.0 Preview',
+    name: 'Imagen 4.0 Preview (나노 바나나 Preview)',
     author: 'Google',
     pricePerImage: 0.040,
     modelId: 'google/imagen-4.0-preview',
     provider: 'together',
+    noSteps: true,
     isNew: true,
   },
   {
     id: 'google-imagen-40-ultra',
-    name: 'Imagen 4.0 Ultra',
+    name: 'Imagen 4.0 Ultra (나노 바나나 Ultra)',
     author: 'Google',
     pricePerImage: 0.060,
     modelId: 'google/imagen-4.0-ultra',
     provider: 'together',
+    noSteps: true,
     isNew: true,
   },
   {
     id: 'google-gemini-3-pro-image',
-    name: 'Gemini 3 Pro Image',
+    name: 'Gemini 3 Pro Image (나노 바나나 Pro)',
     author: 'Google',
     pricePerImage: 0.060,
     modelId: 'google/gemini-3-pro-image',
     provider: 'together',
+    noSteps: true,
     isNew: true,
   },
 
@@ -255,6 +268,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.04,
     modelId: 'openai/gpt-image-1.5',
     provider: 'together',
+    noSteps: true,
     isNew: true,
   },
   {

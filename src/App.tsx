@@ -68,7 +68,7 @@ export default function App() {
     const capped = unlocked ? selectedModels : selectedModels.slice(0, remaining as number)
     if (!consume(capped.length)) return
     generateAll(
-      capped.map((m) => ({ modelId: m.modelId, name: m.name, provider: m.provider })),
+      capped.map((m) => ({ modelId: m.modelId, name: m.name, provider: m.provider, noSteps: m.noSteps })),
       prompt, width, height, steps,
     )
   }

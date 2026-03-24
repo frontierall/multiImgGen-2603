@@ -17,6 +17,7 @@ interface ModelRequest {
   modelId: string
   name: string
   provider: Provider
+  noSteps?: boolean
 }
 
 // ── Together AI ───────────────────────────────────────────────
@@ -28,11 +29,15 @@ async function generateTogether(
   width: number,
   height: number,
   steps: number,
+  noSteps: boolean,
 ): Promise<GeneratedResult> {
+  const body: Record<string, unknown> = { model: modelId, prompt, width, height, n: 1, response_format: 'b64_json' }
+  if (!noSteps) body.steps = steps
+
   const res = await fetch('https://api.together.xyz/v1/images/generations', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: modelId, prompt, width, height, steps, n: 1, response_format: 'b64_json' }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const txt = await res.text()
@@ -60,10 +65,15 @@ async function generateOpenAI(
     : `${width}x${height}`
   const quality = modelId.endsWith('-hd') ? 'hd' : 'standard'
   const realModelId = modelId.replace(/-hd$/, '')
+  // gpt-image-1 does not support response_format; dall-e-3 supports b64_json
+  const supportsResponseFormat = realModelId.startsWith('dall-e')
+  const body: Record<string, unknown> = { model: realModelId, prompt, n: 1, size, quality }
+  if (supportsResponseFormat) body.response_format = 'b64_json'
+
   const res = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: realModelId, prompt, n: 1, size, quality, response_format: 'b64_json' }),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const txt = await res.text()
@@ -103,7 +113,7 @@ export function useImageGen(apiKeys: ApiKeys) {
 
     const tasks = models.map((m) => {
       if (m.provider === 'openai') return generateOpenAI(apiKeys.openai, m.modelId, m.name, prompt, width, height)
-      return generateTogether(apiKeys.together, m.modelId, m.name, prompt, width, height, steps)
+      return generateTogether(apiKeys.together, m.modelId, m.name, prompt, width, height, steps, m.noSteps ?? false)
     })
 
     const settled = await Promise.allSettled(tasks)
