@@ -4,9 +4,10 @@ import { Lock, Unlock } from 'lucide-react'
 interface Props {
   onUnlock: (code: string) => boolean
   onClose: () => void
+  addAmount: number
 }
 
-export default function PasscodeModal({ onUnlock, onClose }: Props) {
+export default function PasscodeModal({ onUnlock, onClose, addAmount }: Props) {
   const [code, setCode] = useState('')
   const [error, setError] = useState(false)
   const [shake, setShake] = useState(false)
@@ -36,9 +37,9 @@ export default function PasscodeModal({ onUnlock, onClose }: Props) {
           </div>
           <h2 className="text-base font-semibold text-slate-100">한도 초과</h2>
           <p className="text-sm text-slate-400 text-center">
-            무료 사용 10장을 모두 사용했습니다.
+            사용 한도를 모두 사용했습니다.
             <br />
-            암호를 입력하면 계속 사용할 수 있습니다.
+            암호를 입력하면 <span className="text-violet-400 font-medium">+{addAmount}장</span>이 추가됩니다.
           </p>
         </div>
 
@@ -71,7 +72,7 @@ export default function PasscodeModal({ onUnlock, onClose }: Props) {
             className="flex-1 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-[#2a2d3a] disabled:text-slate-600 text-sm text-white font-medium flex items-center justify-center gap-1.5 transition-colors"
           >
             <Unlock size={14} />
-            잠금 해제
+            +{addAmount}장 추가
           </button>
         </div>
       </div>

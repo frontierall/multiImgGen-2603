@@ -1,25 +1,25 @@
 import { useState } from 'react'
 
 const STORAGE_KEY = 'img_gen_used'
-const UNLOCK_KEY = 'img_gen_unlocked'
-const MAX_IMAGES = 10
-const PASSCODE = '1234'
+const CAP_KEY     = 'img_gen_cap'
+const BASE_CAP    = 10
+const ADD_AMOUNT  = 10
+const PASSCODE    = '1234'
 
 export function useQuota() {
   const [used, setUsed] = useState<number>(() =>
     parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10),
   )
-  const [unlocked, setUnlocked] = useState<boolean>(
-    () => localStorage.getItem(UNLOCK_KEY) === 'true',
+  const [cap, setCap] = useState<number>(() =>
+    parseInt(localStorage.getItem(CAP_KEY) ?? String(BASE_CAP), 10),
   )
 
-  const remaining = unlocked ? Infinity : Math.max(0, MAX_IMAGES - used)
-  const isExhausted = !unlocked && used >= MAX_IMAGES
+  const remaining   = Math.max(0, cap - used)
+  const isExhausted = used >= cap
 
   function consume(count: number): boolean {
-    if (unlocked) return true
     const current = parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10)
-    if (current + count > MAX_IMAGES) return false
+    if (current + count > cap) return false
     const next = current + count
     localStorage.setItem(STORAGE_KEY, String(next))
     setUsed(next)
@@ -28,12 +28,13 @@ export function useQuota() {
 
   function tryUnlock(code: string): boolean {
     if (code === PASSCODE) {
-      localStorage.setItem(UNLOCK_KEY, 'true')
-      setUnlocked(true)
+      const newCap = cap + ADD_AMOUNT
+      localStorage.setItem(CAP_KEY, String(newCap))
+      setCap(newCap)
       return true
     }
     return false
   }
 
-  return { used, remaining, isExhausted, unlocked, MAX_IMAGES, consume, tryUnlock }
+  return { used, remaining, isExhausted, cap, ADD_AMOUNT, consume, tryUnlock }
 }

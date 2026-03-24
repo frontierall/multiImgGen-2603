@@ -33,14 +33,13 @@ export default function ModelCard({ model, selected, onToggle }: Props) {
         )}
       </div>
 
-      {model.isNew && (
-        <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium">
-          NEW
-        </span>
-      )}
-
-      <span className="pl-6 text-sm font-medium text-slate-100 leading-tight pr-1">
+      <span className="pl-6 pr-2 text-sm font-medium text-slate-100 leading-tight flex items-start gap-1.5 flex-wrap">
         {model.name}
+        {model.isNew && (
+          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium self-center">
+            NEW
+          </span>
+        )}
       </span>
       <span className={`pl-6 text-xs font-semibold ${selected ? 'text-violet-400' : 'text-slate-400'}`}>
         ${model.pricePerImage.toFixed(3)}

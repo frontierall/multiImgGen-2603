@@ -32,7 +32,7 @@ export default function App() {
   const [steps, setSteps]     = useState(4)
 
   const { loading, results, error, generateAll }          = useImageGen(apiKeys)
-  const { remaining, isExhausted, unlocked, MAX_IMAGES, consume, tryUnlock } = useQuota()
+  const { remaining, isExhausted, cap, ADD_AMOUNT, consume, tryUnlock } = useQuota()
   const [showPasscode, setShowPasscode] = useState(false)
 
   function handleApiKeysChange(keys: ApiKeys) {
@@ -65,7 +65,7 @@ export default function App() {
 
   function handleGenerate() {
     if (isExhausted) { setShowPasscode(true); return }
-    const capped = unlocked ? selectedModels : selectedModels.slice(0, remaining as number)
+    const capped = selectedModels.slice(0, remaining)
     if (!consume(capped.length)) return
     generateAll(
       capped.map((m) => ({ modelId: m.modelId, name: m.name, provider: m.provider, noSteps: m.noSteps })),
@@ -76,7 +76,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0f1117]">
       {showPasscode && (
-        <PasscodeModal onUnlock={tryUnlock} onClose={() => setShowPasscode(false)} />
+        <PasscodeModal onUnlock={tryUnlock} onClose={() => setShowPasscode(false)} addAmount={ADD_AMOUNT} />
       )}
 
       {/* top bar */}
@@ -137,8 +137,7 @@ export default function App() {
           loading={loading}
           onGenerate={handleGenerate}
           remaining={remaining}
-          maxImages={MAX_IMAGES}
-          unlocked={unlocked}
+          cap={cap}
         />
 
         {error && (

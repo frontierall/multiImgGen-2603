@@ -12,9 +12,8 @@ interface Props {
   selectedCount: number
   loading: boolean
   onGenerate: () => void
-  remaining: number | typeof Infinity
-  maxImages: number
-  unlocked: boolean
+  remaining: number
+  cap: number
 }
 
 const SIZE_PRESETS = [
@@ -52,12 +51,11 @@ export default function PromptPanel({
   loading,
   onGenerate,
   remaining,
-  maxImages,
-  unlocked,
+  cap,
 }: Props) {
-  const isExhausted = !unlocked && remaining === 0
-  const willExceed = !unlocked && selectedCount > (remaining as number)
-  const barPct = unlocked ? 0 : Math.round(((maxImages - (remaining as number)) / maxImages) * 100)
+  const isExhausted = remaining === 0
+  const willExceed  = selectedCount > remaining
+  const barPct      = Math.round(((cap - remaining) / cap) * 100)
 
   return (
     <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-4 flex flex-col gap-3">
@@ -72,9 +70,9 @@ export default function PromptPanel({
           />
         </div>
         <span className={`text-xs font-medium whitespace-nowrap ${
-          unlocked ? 'text-emerald-400' : isExhausted ? 'text-red-400' : (remaining as number) <= 3 ? 'text-amber-400' : 'text-slate-400'
+          isExhausted ? 'text-red-400' : remaining <= 3 ? 'text-amber-400' : 'text-slate-400'
         }`}>
-          {unlocked ? '🔓 잠금 해제됨 (무제한)' : isExhausted ? '한도 소진' : `잔여 ${remaining} / ${maxImages}장`}
+          {isExhausted ? '한도 소진' : `잔여 ${remaining} / ${cap}장`}
         </span>
       </div>
 
@@ -143,7 +141,7 @@ export default function PromptPanel({
         <div className="ml-auto flex flex-col items-end gap-1">
           {willExceed && !isExhausted && (
             <p className="text-xs text-amber-400">
-              {selectedCount}장 필요, 잔여 {remaining}장 — {remaining}개 모델까지만 생성됩니다
+              {selectedCount}개 선택, 잔여 {remaining}장 — {remaining}개 모델까지만 생성됩니다
             </p>
           )}
           <button
