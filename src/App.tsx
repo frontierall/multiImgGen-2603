@@ -9,6 +9,7 @@ import ResultsPanel from './components/ResultsPanel'
 import { useImageGen, type ApiKeys } from './hooks/useImageGen'
 import { useQuota } from './hooks/useQuota'
 import PasscodeModal from './components/PasscodeModal'
+import AppGateModal, { isGateUnlocked } from './components/AppGateModal'
 
 type SortMode = 'default' | 'price'
 
@@ -34,6 +35,7 @@ export default function App() {
   const { loading, results, error, generateAll }          = useImageGen(apiKeys)
   const { remaining, isExhausted, cap, ADD_AMOUNT, consume, tryUnlock } = useQuota()
   const [showPasscode, setShowPasscode] = useState(false)
+  const [gateOpen, setGateOpen] = useState(isGateUnlocked)
 
   function handleApiKeysChange(keys: ApiKeys) {
     setApiKeys(keys)
@@ -72,6 +74,8 @@ export default function App() {
       prompt, width, height, steps,
     )
   }
+
+  if (!gateOpen) return <AppGateModal onUnlock={() => setGateOpen(true)} />
 
   return (
     <div className="min-h-screen bg-[#0f1117]">
