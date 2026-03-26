@@ -1,0 +1,150 @@
+================================================================
+  Multi Image Generator — 빌드 프롬프트 (간략 버전)
+================================================================
+
+Together AI · OpenAI 2개 프로바이더의 이미지 생성 모델을
+한 화면에서 동시에 비교 생성하는 웹 앱을 만들어주세요.
+
+---
+
+## Tech Stack
+
+Vite + React 18 + TypeScript + Tailwind CSS (다크 테마 #0f1117) + lucide-react
+배포: GitHub Pages (GitHub Actions)
+
+---
+
+## 기능 요약
+
+- 모델 카드 체크박스 다중 선택 → 동시 생성 (Promise.allSettled)
+- 모델/회사명 검색, 가격 낮은 순 정렬
+- API Key 드롭다운 입력 → sessionStorage 저장 (탭 닫으면 삭제)
+- 앱 입장 게이트: 암호 1234 (sessionStorage)
+- 쿼터 시스템: 기본 10장, 암호 124578 입력마다 +10장 (localStorage)
+- 결과 그리드: hover 시 다운로드 버튼, 에러 모델은 에러 로그 패널에 표시
+- 샘플 프롬프트 버튼 4종 (풍경/사이버펑크/인물/애니)
+- 이미지 크기 프리셋: 1:1(1024×1024), 16:9(1344×768), 9:16(768×1344), 4:3(1152×896)
+- Steps 입력 (diffusion 모델만 — 아래 noSteps 참고)
+
+---
+
+## 컴포넌트 구조
+
+App.tsx
+├── AppGateModal      — 전체화면 잠금 (sessionStorage 세션 유지)
+├── PasscodeModal     — 쿼터 충전 모달 (+10장)
+├── header
+│   ├── 정렬 토글 (기본 / 가격 낮은 순)
+│   ├── 검색 input
+│   └── ApiKeyInput   — 드롭다운, Together AI + OpenAI
+├── PromptPanel       — 쿼터 바, 샘플 프롬프트, textarea, 크기 프리셋, Steps, 생성 버튼
+├── SelectedSection   — 선택 모델 태그 목록 + 전체 해제
+├── ProviderSection × 2 — Together AI / OpenAI (접기/펼치기)
+│   └── CompanyGroup → ModelCard (체크박스, 가격, NEW 뱃지)
+└── ResultsPanel      — 이미지 그리드 + 에러 로그 패널
+
+hooks/useImageGen.ts  — Together AI / OpenAI API 호출
+hooks/useQuota.ts     — 쿼터 관리 (localStorage)
+data/imageModels.ts   — 모델 정의, groupByProvider()
+
+---
+
+## 지원 모델 목록
+
+### Together AI (provider: 'together')
+
+| 회사             | 모델명                      | modelId                                          | 가격    | noSteps |
+|------------------|-----------------------------|--------------------------------------------------|---------|---------|
+| Black Forest Labs | FLUX.1 Schnell              | black-forest-labs/FLUX.1-schnell                 | $0.003  |         |
+| Black Forest Labs | FLUX.1 Krea [dev]           | black-forest-labs/FLUX.1-krea-dev                | $0.025  |         |
+| Black Forest Labs | FLUX.1.1 Pro                | black-forest-labs/FLUX.1.1-pro                   | $0.040  |         |
+| Black Forest Labs | FLUX.1 Kontext Pro          | black-forest-labs/FLUX.1-kontext-pro             | $0.040  |         |
+| Black Forest Labs | FLUX.1 Kontext Max          | black-forest-labs/FLUX.1-kontext-max             | $0.080  |         |
+| Stability AI      | Stable Diffusion XL         | stabilityai/stable-diffusion-xl-base-1.0         | $0.002  |         |
+| Stability AI      | Stable Diffusion 3 Medium   | stabilityai/stable-diffusion-3-medium            | $0.002  |         |
+| Lykon             | DreamShaper                 | Lykon/DreamShaper                                | $0.001  |         |
+| RunDiffusion      | Juggernaut Lightning Flux   | RunDiffusion/Juggernaut-Lightning-Flux           | $0.002  |         |
+| RunDiffusion      | Juggernaut Pro Flux         | RunDiffusion/Juggernaut-pro-flux                 | $0.005  |         |
+| HiDream           | HiDream I1 Fast             | HiDream-ai/HiDream-I1-Fast                       | $0.003  |         |
+| HiDream           | HiDream I1 Dev              | HiDream-ai/HiDream-I1-Dev                        | $0.005  |         |
+| HiDream           | HiDream I1 Full             | HiDream-ai/HiDream-I1-Full                       | $0.009  |         |
+| Qwen              | Qwen Image                  | Qwen/Qwen-Image                                  | $0.006  | ✓       |
+| Qwen              | Qwen Image 2.0 [NEW]        | Qwen/Qwen-Image-2.0                              | $0.008  | ✓       |
+| ByteDance         | Seedream 3.0                | ByteDance-Seed/Seedream-3.0                      | $0.018  | ✓       |
+| ByteDance         | Seedream 4.0 [NEW]          | ByteDance-Seed/Seedream-4.0                      | $0.030  | ✓       |
+| Wan-AI            | Wan 2.6 Image [NEW]         | Wan-AI/Wan-2.6-Image                             | $0.008  | ✓       |
+| Ideogram          | Ideogram 3.0                | ideogram/ideogram-3.0                            | $0.060  | ✓       |
+| Google            | Imagen 4.0 Fast (나노 바나나 Fast) [NEW]    | google/imagen-4.0-fast     | $0.020  | ✓       |
+| Google            | Flash Image 2.5 (나노 바나나 2) [NEW]       | google/flash-image-2.5     | $0.039  | ✓       |
+| Google            | Flash Image 3.1 (나노 바나나 3) [NEW]       | google/flash-image-3.1     | $0.039  | ✓       |
+| Google            | Imagen 4.0 Preview (나노 바나나 Preview) [NEW] | google/imagen-4.0-preview | $0.040  | ✓       |
+| Google            | Imagen 4.0 Ultra (나노 바나나 Ultra) [NEW]  | google/imagen-4.0-ultra    | $0.060  | ✓       |
+| Google            | Gemini 3 Pro Image (나노 바나나 Pro) [NEW]  | google/gemini-3-pro-image  | $0.060  | ✓       |
+| OpenAI            | GPT Image 1.5 [NEW]         | openai/gpt-image-1.5                             | $0.040  | ✓       |
+
+### OpenAI Direct (provider: 'openai')
+
+| 모델명                  | modelId       | 가격   | 비고                                  |
+|-------------------------|---------------|--------|---------------------------------------|
+| GPT Image 1.5 (Direct) [NEW] | gpt-image-1 | $0.040 | response_format 미지원                |
+| DALL·E 3                | dall-e-3      | $0.040 | response_format: 'b64_json' 지원      |
+| DALL·E 3 HD             | dall-e-3-hd   | $0.080 | 내부에서 -hd 제거 후 quality:'hd' 처리 |
+
+---
+
+## API 호출 핵심 로직
+
+### Together AI
+```
+POST https://api.together.xyz/v1/images/generations
+{ model, prompt, width, height, n:1, response_format:'b64_json'
+  steps }  ← noSteps:true 모델은 steps 생략
+```
+
+### OpenAI Direct
+```
+POST https://api.openai.com/v1/images/generations
+dall-e-3: { model:'dall-e-3', prompt, n:1, size:'1024x1024', quality:'standard', response_format:'b64_json' }
+dall-e-3-hd: 위와 동일하되 model:'dall-e-3', quality:'hd'
+gpt-image-1: { model:'gpt-image-1', prompt, n:1, size, quality }  ← response_format 없음
+```
+
+---
+
+## ⚠️ 핵심 주의사항
+
+1. **noSteps** — Qwen / ByteDance / Wan-AI / Ideogram / Google / OpenAI via Together 모델은
+   steps 파라미터 전송 시 API 에러. `noSteps:true` 플래그로 조건부 생략할 것.
+
+2. **response_format** — `gpt-image-1`은 해당 파라미터 자체가 없음.
+   `realModelId.startsWith('dall-e')`일 때만 추가.
+
+3. **모델 ID 대소문자** — Together AI는 정확히 구분:
+   - `HiDream-ai/HiDream-I1-Fast` (소문자 x)
+   - `ByteDance-Seed/Seedream-3.0` (ByteDance 아님)
+   - `Wan-AI/Wan-2.6-Image`
+   - `ideogram/ideogram-3.0`
+
+4. **쿼터 소진 시 생성 버튼** — `disabled={isExhausted}` 절대 금지.
+   클릭 → handleGenerate → PasscodeModal 순서 유지.
+   버튼 색상만 amber로 바꿀 것.
+
+5. **serverless 미지원 모델** — 추가 금지:
+   `prompthero/openjourney`, FLUX.2 계열, `FLUX.1-dev`
+
+---
+
+## GitHub Pages 배포
+
+vite.config.ts: `base: '/레포이름/'`
+
+.github/workflows/deploy.yml 핵심:
+```yaml
+on: push (branches: main)
+env: FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+steps: checkout → setup-node(24) → npm ci → npm run build
+       → configure-pages → upload-artifact(dist/) → deploy-pages
+```
+Settings → Pages → Source → **GitHub Actions** 선택 필수
+
+================================================================

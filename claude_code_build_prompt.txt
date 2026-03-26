@@ -1,0 +1,1285 @@
+================================================================
+  Multi Image Generator — Claude Code 빌드 프롬프트
+  이 파일 하나로 동일한 앱을 처음부터 재현할 수 있습니다.
+================================================================
+
+## 앱 개요
+
+Together AI · OpenAI 2개 프로바이더의 이미지 생성 모델을 한 화면에서
+동시에 비교 생성하는 웹 앱을 만들어주세요.
+
+**Tech Stack:**
+- Vite + React 18 + TypeScript
+- Tailwind CSS (다크 테마, 배경 `#0f1117`)
+- lucide-react (아이콘)
+- 배포: GitHub Pages (GitHub Actions)
+
+---
+
+## 핵심 기능 목록
+
+1. 모델 카드 다중 선택 (체크박스) → 선택된 모델들을 동시에 생성
+2. 모델 검색 (모델명·회사명), 가격 낮은 순 정렬
+3. API Key 입력 — sessionStorage 저장 (탭 닫으면 자동 삭제)
+4. 쿼터 시스템 — 기본 10장, 암호(124578) 입력마다 +10장 추가 (localStorage)
+5. 앱 입장 게이트 — 별도 암호(1234)로 잠금, sessionStorage로 세션 유지
+6. 결과 그리드 — hover 시 다운로드 버튼 노출
+7. 에러 로그 패널 — 실패 모델과 에러 메시지를 결과 하단에 표시
+8. 샘플 프롬프트 버튼 (풍경, 사이버펑크, 인물, 애니)
+9. 이미지 크기 프리셋 (1:1, 16:9, 9:16, 4:3) + Steps 입력
+
+---
+
+## 프로젝트 초기화
+
+```bash
+npm create vite@latest multi-img-gen -- --template react-ts
+cd multi-img-gen
+npm install lucide-react
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+```
+
+tailwind.config.js:
+```js
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      keyframes: {
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '20%, 60%': { transform: 'translateX(-6px)' },
+          '40%, 80%': { transform: 'translateX(6px)' },
+        },
+      },
+      animation: {
+        shake: 'shake 0.4s ease-in-out',
+      },
+    },
+  },
+  plugins: [],
+}
+```
+
+src/index.css:
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+vite.config.ts (GitHub Pages 배포 시 레포 이름에 맞게 base 수정):
+```ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+export default defineConfig({
+  plugins: [react()],
+  base: '/레포이름/',
+})
+```
+
+---
+
+## 파일 구조
+
+```
+src/
+├── App.tsx
+├── main.tsx
+├── index.css
+├── components/
+│   ├── ApiKeyInput.tsx
+│   ├── AppGateModal.tsx
+│   ├── ModelCard.tsx
+│   ├── PasscodeModal.tsx
+│   ├── PromptPanel.tsx
+│   ├── ProviderSection.tsx
+│   ├── ResultsPanel.tsx
+│   └── SelectedSection.tsx
+├── hooks/
+│   ├── useImageGen.ts
+│   └── useQuota.ts
+└── data/
+    └── imageModels.ts
+```
+
+---
+
+## src/data/imageModels.ts
+
+```typescript
+export type Provider = 'together' | 'openai'
+
+export interface ImageModel {
+  id: string
+  name: string
+  author: string
+  pricePerImage: number // USD per image (1024×1024 기준)
+  modelId: string
+  provider: Provider
+  noSteps?: boolean   // true: steps 파라미터 미지원 모델
+  isNew?: boolean
+}
+
+export interface CompanyGroup {
+  company: string
+  color: string
+  provider: Provider
+  models: ImageModel[]
+}
+
+export const IMAGE_MODELS: ImageModel[] = [
+  // ── Black Forest Labs ────────────────────────────────────────
+  { id: 'flux1-schnell',      name: 'FLUX.1 Schnell',        author: 'Black Forest Labs', pricePerImage: 0.003, modelId: 'black-forest-labs/FLUX.1-schnell',       provider: 'together' },
+  { id: 'flux1-krea-dev',     name: 'FLUX.1 Krea [dev]',     author: 'Black Forest Labs', pricePerImage: 0.025, modelId: 'black-forest-labs/FLUX.1-krea-dev',      provider: 'together' },
+  { id: 'flux11-pro',         name: 'FLUX.1.1 Pro',          author: 'Black Forest Labs', pricePerImage: 0.04,  modelId: 'black-forest-labs/FLUX.1.1-pro',         provider: 'together' },
+  { id: 'flux1-kontext-pro',  name: 'FLUX.1 Kontext Pro',    author: 'Black Forest Labs', pricePerImage: 0.04,  modelId: 'black-forest-labs/FLUX.1-kontext-pro',   provider: 'together' },
+  { id: 'flux1-kontext-max',  name: 'FLUX.1 Kontext Max',    author: 'Black Forest Labs', pricePerImage: 0.08,  modelId: 'black-forest-labs/FLUX.1-kontext-max',   provider: 'together' },
+
+  // ── Stability AI ─────────────────────────────────────────────
+  { id: 'sd-xl',      name: 'Stable Diffusion XL',        author: 'Stability AI', pricePerImage: 0.002, modelId: 'stabilityai/stable-diffusion-xl-base-1.0', provider: 'together' },
+  { id: 'sd3-medium', name: 'Stable Diffusion 3 Medium',  author: 'Stability AI', pricePerImage: 0.002, modelId: 'stabilityai/stable-diffusion-3-medium',    provider: 'together' },
+
+  // ── Lykon ────────────────────────────────────────────────────
+  { id: 'dreamshaper', name: 'DreamShaper', author: 'Lykon', pricePerImage: 0.001, modelId: 'Lykon/DreamShaper', provider: 'together' },
+
+  // ── RunDiffusion ─────────────────────────────────────────────
+  { id: 'juggernaut-lightning', name: 'Juggernaut Lightning Flux', author: 'RunDiffusion', pricePerImage: 0.002, modelId: 'RunDiffusion/Juggernaut-Lightning-Flux', provider: 'together' },
+  { id: 'juggernaut-pro-flux',  name: 'Juggernaut Pro Flux',       author: 'RunDiffusion', pricePerImage: 0.005, modelId: 'RunDiffusion/Juggernaut-pro-flux',       provider: 'together' },
+
+  // ── HiDream ──────────────────────────────────────────────────
+  // ⚠️ 대소문자 정확히 지켜야 함 (HiDream-ai/HiDream-I1-Fast)
+  { id: 'hidream-fast', name: 'HiDream I1 Fast', author: 'HiDream', pricePerImage: 0.003, modelId: 'HiDream-ai/HiDream-I1-Fast', provider: 'together' },
+  { id: 'hidream-dev',  name: 'HiDream I1 Dev',  author: 'HiDream', pricePerImage: 0.005, modelId: 'HiDream-ai/HiDream-I1-Dev',  provider: 'together' },
+  { id: 'hidream-full', name: 'HiDream I1 Full', author: 'HiDream', pricePerImage: 0.009, modelId: 'HiDream-ai/HiDream-I1-Full', provider: 'together' },
+
+  // ── Qwen ─────────────────────────────────────────────────────
+  // ⚠️ noSteps: true (steps 파라미터 미지원)
+  { id: 'qwen-image',   name: 'Qwen Image',     author: 'Qwen', pricePerImage: 0.006, modelId: 'Qwen/Qwen-Image',     provider: 'together', noSteps: true },
+  { id: 'qwen-image-2', name: 'Qwen Image 2.0', author: 'Qwen', pricePerImage: 0.008, modelId: 'Qwen/Qwen-Image-2.0', provider: 'together', noSteps: true, isNew: true },
+
+  // ── ByteDance ─────────────────────────────────────────────────
+  // ⚠️ noSteps: true, 네임스페이스: ByteDance-Seed (ByteDance 아님)
+  { id: 'seedream-30', name: 'Seedream 3.0', author: 'ByteDance', pricePerImage: 0.018, modelId: 'ByteDance-Seed/Seedream-3.0', provider: 'together', noSteps: true },
+  { id: 'seedream-40', name: 'Seedream 4.0', author: 'ByteDance', pricePerImage: 0.030, modelId: 'ByteDance-Seed/Seedream-4.0', provider: 'together', noSteps: true, isNew: true },
+
+  // ── Wan-AI ────────────────────────────────────────────────────
+  // ⚠️ noSteps: true
+  { id: 'wan-image-26', name: 'Wan 2.6 Image', author: 'Wan-AI', pricePerImage: 0.008, modelId: 'Wan-AI/Wan-2.6-Image', provider: 'together', noSteps: true, isNew: true },
+
+  // ── Ideogram ──────────────────────────────────────────────────
+  // ⚠️ noSteps: true
+  { id: 'ideogram-30', name: 'Ideogram 3.0', author: 'Ideogram', pricePerImage: 0.060, modelId: 'ideogram/ideogram-3.0', provider: 'together', noSteps: true },
+
+  // ── Google (via Together AI) ──────────────────────────────────
+  // ⚠️ noSteps: true (전체). Google 자체 API Key 불필요, Together AI Key로 접근
+  { id: 'google-imagen-40-fast',    name: 'Imagen 4.0 Fast (나노 바나나 Fast)',       author: 'Google', pricePerImage: 0.020, modelId: 'google/imagen-4.0-fast',    provider: 'together', noSteps: true, isNew: true },
+  { id: 'google-flash-image-25',    name: 'Flash Image 2.5 (나노 바나나 2)',          author: 'Google', pricePerImage: 0.039, modelId: 'google/flash-image-2.5',    provider: 'together', noSteps: true, isNew: true },
+  { id: 'google-flash-image-31',    name: 'Flash Image 3.1 (나노 바나나 3)',          author: 'Google', pricePerImage: 0.039, modelId: 'google/flash-image-3.1',    provider: 'together', noSteps: true, isNew: true },
+  { id: 'google-imagen-40-preview', name: 'Imagen 4.0 Preview (나노 바나나 Preview)', author: 'Google', pricePerImage: 0.040, modelId: 'google/imagen-4.0-preview', provider: 'together', noSteps: true, isNew: true },
+  { id: 'google-imagen-40-ultra',   name: 'Imagen 4.0 Ultra (나노 바나나 Ultra)',     author: 'Google', pricePerImage: 0.060, modelId: 'google/imagen-4.0-ultra',   provider: 'together', noSteps: true, isNew: true },
+  { id: 'google-gemini-3-pro-image',name: 'Gemini 3 Pro Image (나노 바나나 Pro)',     author: 'Google', pricePerImage: 0.060, modelId: 'google/gemini-3-pro-image', provider: 'together', noSteps: true, isNew: true },
+
+  // ── OpenAI via Together AI ────────────────────────────────────
+  // ⚠️ noSteps: true
+  { id: 'gpt-image-15-together', name: 'GPT Image 1.5',         author: 'OpenAI', pricePerImage: 0.04, modelId: 'openai/gpt-image-1.5', provider: 'together', noSteps: true, isNew: true },
+
+  // ── OpenAI Direct ─────────────────────────────────────────────
+  { id: 'gpt-image-15',  name: 'GPT Image 1.5 (Direct)', author: 'OpenAI', pricePerImage: 0.04, modelId: 'gpt-image-1',  provider: 'openai', isNew: true },
+  { id: 'dall-e-3',      name: 'DALL·E 3',                author: 'OpenAI', pricePerImage: 0.04, modelId: 'dall-e-3',     provider: 'openai' },
+  { id: 'dall-e-3-hd',   name: 'DALL·E 3 HD',             author: 'OpenAI', pricePerImage: 0.08, modelId: 'dall-e-3-hd',  provider: 'openai' },
+  // dall-e-3-hd는 내부적으로 modelId에서 -hd를 제거하고 quality: 'hd'로 처리
+]
+
+export const COMPANY_COLORS: Record<string, string> = {
+  'Black Forest Labs': '#7c3aed',
+  'Lykon':            '#0ea5e9',
+  'RunDiffusion':     '#f59e0b',
+  'Stability AI':     '#10b981',
+  'HiDream':          '#ec4899',
+  'Qwen':             '#6366f1',
+  'ByteDance':        '#ef4444',
+  'Wan-AI':           '#14b8a6',
+  'Ideogram':         '#f97316',
+  'Google':           '#4285f4',
+  'OpenAI':           '#10a37f',
+}
+
+export const PROVIDER_LABELS: Record<Provider, string> = {
+  together: 'TOGETHER_API_KEY',
+  openai:   'OPENAI_API_KEY',
+}
+
+export const PROVIDER_META: Record<Provider, { label: string; color: string }> = {
+  together: { label: 'Together AI', color: '#7c3aed' },
+  openai:   { label: 'OpenAI',      color: '#10a37f' },
+}
+
+export interface ProviderGroup {
+  provider: Provider
+  label: string
+  color: string
+  apiKeyLabel: string
+  companies: { name: string; models: ImageModel[] }[]
+}
+
+export function groupByProvider(models: ImageModel[]): ProviderGroup[] {
+  const order: Provider[] = ['together', 'openai']
+  return order
+    .map((p) => {
+      const pModels = models.filter((m) => m.provider === p)
+      const companyMap = new Map<string, ImageModel[]>()
+      for (const m of pModels) {
+        if (!companyMap.has(m.author)) companyMap.set(m.author, [])
+        companyMap.get(m.author)!.push(m)
+      }
+      return {
+        provider: p,
+        label: PROVIDER_META[p].label,
+        color: PROVIDER_META[p].color,
+        apiKeyLabel: PROVIDER_LABELS[p],
+        companies: Array.from(companyMap.entries()).map(([name, models]) => ({ name, models })),
+      }
+    })
+    .filter((g) => g.companies.length > 0)
+}
+
+export function groupByCompany(models: ImageModel[]): CompanyGroup[] {
+  const map = new Map<string, ImageModel[]>()
+  for (const model of models) {
+    if (!map.has(model.author)) map.set(model.author, [])
+    map.get(model.author)!.push(model)
+  }
+  return Array.from(map.entries()).map(([company, models]) => ({
+    company,
+    color: COMPANY_COLORS[company] ?? '#6b7280',
+    provider: models[0].provider,
+    models,
+  }))
+}
+```
+
+---
+
+## src/hooks/useImageGen.ts
+
+```typescript
+import { useState } from 'react'
+import type { Provider } from '../data/imageModels'
+
+export interface GeneratedResult {
+  modelId: string
+  modelName: string
+  url: string
+  error?: string
+}
+
+export interface ApiKeys {
+  together: string
+  openai: string
+}
+
+interface ModelRequest {
+  modelId: string
+  name: string
+  provider: Provider
+  noSteps?: boolean
+}
+
+// ── Together AI ───────────────────────────────────────────────
+async function generateTogether(
+  apiKey: string,
+  modelId: string,
+  modelName: string,
+  prompt: string,
+  width: number,
+  height: number,
+  steps: number,
+  noSteps: boolean,
+): Promise<GeneratedResult> {
+  const body: Record<string, unknown> = { model: modelId, prompt, width, height, n: 1, response_format: 'b64_json' }
+  if (!noSteps) body.steps = steps
+
+  const res = await fetch('https://api.together.xyz/v1/images/generations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const txt = await res.text()
+    let msg = `${res.status}`
+    try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+    return { modelId, modelName, url: '', error: msg }
+  }
+  const data = await res.json()
+  const b64 = data?.data?.[0]?.b64_json as string | undefined
+  const url = b64 ? `data:image/png;base64,${b64}` : (data?.data?.[0]?.url ?? '')
+  return { modelId, modelName, url }
+}
+
+// ── OpenAI Direct ─────────────────────────────────────────────
+// ⚠️ gpt-image-1은 response_format 미지원, dall-e-3만 지원
+// ⚠️ dall-e-3-hd는 modelId에서 -hd 제거 후 quality: 'hd'로 처리
+async function generateOpenAI(
+  apiKey: string,
+  modelId: string,
+  modelName: string,
+  prompt: string,
+  width: number,
+  height: number,
+): Promise<GeneratedResult> {
+  const size = modelId.startsWith('dall-e')
+    ? width >= height ? '1024x1024' : '1024x1792'
+    : `${width}x${height}`
+  const quality = modelId.endsWith('-hd') ? 'hd' : 'standard'
+  const realModelId = modelId.replace(/-hd$/, '')
+  const supportsResponseFormat = realModelId.startsWith('dall-e')
+  const body: Record<string, unknown> = { model: realModelId, prompt, n: 1, size, quality }
+  if (supportsResponseFormat) body.response_format = 'b64_json'
+
+  const res = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const txt = await res.text()
+    let msg = `${res.status}`
+    try { msg = JSON.parse(txt)?.error?.message ?? msg } catch {}
+    return { modelId, modelName, url: '', error: msg }
+  }
+  const data = await res.json()
+  const b64 = data?.data?.[0]?.b64_json as string | undefined
+  const url = b64 ? `data:image/png;base64,${b64}` : (data?.data?.[0]?.url ?? '')
+  return { modelId, modelName, url }
+}
+
+// ── Main hook ─────────────────────────────────────────────────
+export function useImageGen(apiKeys: ApiKeys) {
+  const [loading, setLoading] = useState(false)
+  const [results, setResults] = useState<GeneratedResult[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  async function generateAll(
+    models: ModelRequest[],
+    prompt: string,
+    width: number,
+    height: number,
+    steps: number,
+  ) {
+    if (!prompt.trim()) { setError('프롬프트를 입력해주세요.'); return }
+
+    const needsTogether = models.some((m) => m.provider === 'together')
+    const needsOpenAI   = models.some((m) => m.provider === 'openai')
+    if (needsTogether && !apiKeys.together.trim()) { setError('Together AI API Key를 입력해주세요.'); return }
+    if (needsOpenAI   && !apiKeys.openai.trim())   { setError('OpenAI API Key를 입력해주세요.'); return }
+
+    setError(null)
+    setLoading(true)
+    setResults([])
+
+    const tasks = models.map((m) => {
+      if (m.provider === 'openai') return generateOpenAI(apiKeys.openai, m.modelId, m.name, prompt, width, height)
+      return generateTogether(apiKeys.together, m.modelId, m.name, prompt, width, height, steps, m.noSteps ?? false)
+    })
+
+    const settled = await Promise.allSettled(tasks)
+    const imgs: GeneratedResult[] = settled.map((r, i) =>
+      r.status === 'fulfilled'
+        ? r.value
+        : { modelId: models[i].modelId, modelName: models[i].name, url: '', error: String((r as PromiseRejectedResult).reason) },
+    )
+
+    setResults(imgs)
+    setLoading(false)
+  }
+
+  return { loading, results, error, generateAll }
+}
+```
+
+---
+
+## src/hooks/useQuota.ts
+
+```typescript
+import { useState } from 'react'
+
+const STORAGE_KEY = 'img_gen_used'  // 사용한 장수
+const CAP_KEY     = 'img_gen_cap'   // 현재 한도
+const BASE_CAP    = 10
+const ADD_AMOUNT  = 10
+const PASSCODE    = '124578'  // 쿼터 충전 암호
+
+export function useQuota() {
+  const [used, setUsed] = useState<number>(() =>
+    parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10),
+  )
+  const [cap, setCap] = useState<number>(() =>
+    parseInt(localStorage.getItem(CAP_KEY) ?? String(BASE_CAP), 10),
+  )
+
+  const remaining   = Math.max(0, cap - used)
+  const isExhausted = used >= cap
+
+  function consume(count: number): boolean {
+    const current = parseInt(localStorage.getItem(STORAGE_KEY) ?? '0', 10)
+    if (current + count > cap) return false
+    const next = current + count
+    localStorage.setItem(STORAGE_KEY, String(next))
+    setUsed(next)
+    return true
+  }
+
+  function tryUnlock(code: string): boolean {
+    if (code === PASSCODE) {
+      const newCap = cap + ADD_AMOUNT
+      localStorage.setItem(CAP_KEY, String(newCap))
+      setCap(newCap)
+      return true
+    }
+    return false
+  }
+
+  return { used, remaining, isExhausted, cap, ADD_AMOUNT, consume, tryUnlock }
+}
+```
+
+---
+
+## src/components/AppGateModal.tsx
+
+앱 최초 진입 시 전체 화면을 덮는 잠금 모달.
+올바른 암호(1234) 입력 시 sessionStorage에 플래그 저장 → 탭 닫으면 초기화.
+틀리면 shake 애니메이션.
+
+```typescript
+import { useState } from 'react'
+import { Lock, Wand2 } from 'lucide-react'
+
+const GATE_PASSCODE = '1234'
+const GATE_KEY      = 'app_gate_unlocked'
+
+export function isGateUnlocked(): boolean {
+  return sessionStorage.getItem(GATE_KEY) === 'true'
+}
+
+export default function AppGateModal({ onUnlock }: { onUnlock: () => void }) {
+  const [code, setCode]   = useState('')
+  const [error, setError] = useState(false)
+  const [shake, setShake] = useState(false)
+
+  function handleSubmit() {
+    if (code === GATE_PASSCODE) {
+      sessionStorage.setItem(GATE_KEY, 'true')
+      onUnlock()
+    } else {
+      setError(true)
+      setShake(true)
+      setCode('')
+      setTimeout(() => setShake(false), 400)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1117]">
+      <div className={`w-80 flex flex-col items-center gap-6 ${shake ? 'animate-shake' : ''}`}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-16 h-16 rounded-2xl bg-violet-500/15 flex items-center justify-center">
+            <Wand2 size={30} className="text-violet-400" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-100">Multi Image Gen</h1>
+          <p className="text-sm text-slate-500 text-center">접근하려면 암호를 입력하세요.</p>
+        </div>
+        <div className="w-full flex flex-col gap-3">
+          <input
+            type="password"
+            value={code}
+            onChange={(e) => { setCode(e.target.value); setError(false) }}
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+            placeholder="암호 입력"
+            autoFocus
+            className={`w-full bg-[#1a1d27] border rounded-xl px-4 py-3 text-sm text-center text-slate-200 placeholder:text-slate-600 outline-none tracking-widest transition-colors ${
+              error ? 'border-red-500/60' : 'border-[#2a2d3a] focus:border-violet-500/50'
+            }`}
+          />
+          {error && <p className="text-xs text-red-400 text-center -mt-1">암호가 틀렸습니다.</p>}
+          <button
+            onClick={handleSubmit}
+            disabled={!code}
+            className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-[#2a2d3a] disabled:text-slate-600 text-sm text-white font-medium flex items-center justify-center gap-2 transition-colors"
+          >
+            <Lock size={14} />
+            입장
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## src/components/PasscodeModal.tsx
+
+쿼터 소진 시 열리는 충전 모달. 암호(124578) 입력 시 +10장.
+
+```typescript
+import { useState } from 'react'
+import { Lock, Unlock } from 'lucide-react'
+
+interface Props {
+  onUnlock: (code: string) => boolean
+  onClose: () => void
+  addAmount: number
+}
+
+export default function PasscodeModal({ onUnlock, onClose, addAmount }: Props) {
+  const [code, setCode] = useState('')
+  const [error, setError] = useState(false)
+  const [shake, setShake] = useState(false)
+
+  function handleSubmit() {
+    const ok = onUnlock(code)
+    if (ok) {
+      onClose()
+    } else {
+      setError(true)
+      setShake(true)
+      setCode('')
+      setTimeout(() => setShake(false), 400)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className={`w-80 bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-6 flex flex-col gap-4 shadow-2xl ${shake ? 'animate-shake' : ''}`}>
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-12 h-12 rounded-full bg-violet-500/15 flex items-center justify-center">
+            <Lock size={22} className="text-violet-400" />
+          </div>
+          <h2 className="text-base font-semibold text-slate-100">한도 초과</h2>
+          <p className="text-sm text-slate-400 text-center">
+            사용 한도를 모두 사용했습니다.<br />
+            암호를 입력하면 <span className="text-violet-400 font-medium">+{addAmount}장</span>이 추가됩니다.
+          </p>
+        </div>
+        <input
+          type="password"
+          value={code}
+          onChange={(e) => { setCode(e.target.value); setError(false) }}
+          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+          placeholder="암호 입력"
+          autoFocus
+          className={`w-full bg-[#0f1117] border rounded-xl px-4 py-2.5 text-sm text-center text-slate-200 placeholder:text-slate-600 outline-none tracking-widest transition-colors ${
+            error ? 'border-red-500/60' : 'border-[#2a2d3a] focus:border-violet-500/50'
+          }`}
+        />
+        {error && <p className="text-xs text-red-400 text-center -mt-2">암호가 틀렸습니다.</p>}
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2 rounded-xl border border-[#2a2d3a] text-sm text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors">취소</button>
+          <button
+            onClick={handleSubmit}
+            disabled={!code}
+            className="flex-1 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-[#2a2d3a] disabled:text-slate-600 text-sm text-white font-medium flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <Unlock size={14} />
+            +{addAmount}장 추가
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## src/components/ApiKeyInput.tsx
+
+헤더에 위치. 버튼 클릭 시 드롭다운으로 Together AI / OpenAI API Key 입력.
+sessionStorage에 저장 (탭 닫으면 자동 삭제).
+
+```typescript
+import { useState } from 'react'
+import { Eye, EyeOff, Key, ChevronDown } from 'lucide-react'
+import type { ApiKeys } from '../hooks/useImageGen'
+
+interface Props {
+  apiKeys: ApiKeys
+  onChange: (keys: ApiKeys) => void
+}
+
+const PROVIDERS = [
+  { key: 'together' as keyof ApiKeys, label: 'Together AI', color: '#7c3aed' },
+  { key: 'openai'   as keyof ApiKeys, label: 'OpenAI',      color: '#10a37f' },
+]
+
+export default function ApiKeyInput({ apiKeys, onChange }: Props) {
+  const [open, setOpen] = useState(false)
+  const [show, setShow] = useState<Record<string, boolean>>({})
+
+  const setCount = Object.values(apiKeys).filter(Boolean).length
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 bg-[#1a1d27] border border-[#2a2d3a] rounded-xl px-3 py-2 hover:border-[#3a3d4a] transition-colors"
+      >
+        <Key size={14} className="text-violet-400" />
+        <span className="text-sm text-slate-300">API Keys</span>
+        {setCount > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium">
+            {setCount}/2
+          </span>
+        )}
+        <ChevronDown size={13} className={`text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 w-80 bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-3 flex flex-col gap-2.5 z-50 shadow-xl">
+          {PROVIDERS.map((p) => (
+            <div key={p.key}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold" style={{ color: p.color }}>{p.label}</span>
+                {apiKeys[p.key] && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">SET</span>}
+              </div>
+              <div className="flex items-center gap-2 bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-2 focus-within:border-violet-500/40">
+                <input
+                  type={show[p.key] ? 'text' : 'password'}
+                  value={apiKeys[p.key]}
+                  onChange={(e) => onChange({ ...apiKeys, [p.key]: e.target.value })}
+                  placeholder={`${p.label} API Key`}
+                  className="flex-1 bg-transparent text-xs text-slate-200 placeholder:text-slate-600 outline-none min-w-0"
+                />
+                <button onClick={() => setShow((v) => ({ ...v, [p.key]: !v[p.key] }))} className="text-slate-600 hover:text-slate-400">
+                  {show[p.key] ? <EyeOff size={13} /> : <Eye size={13} />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+---
+
+## src/components/ModelCard.tsx
+
+체크박스 + 모델명 + 가격 + NEW 뱃지. 선택 시 보라색 하이라이트.
+
+```typescript
+import type { ImageModel } from '../data/imageModels'
+
+interface Props {
+  model: ImageModel
+  selected: boolean
+  onToggle: (id: string) => void
+}
+
+export default function ModelCard({ model, selected, onToggle }: Props) {
+  return (
+    <button
+      onClick={() => onToggle(model.id)}
+      className={`relative flex flex-col gap-1 p-3 rounded-xl border text-left transition-all ${
+        selected
+          ? 'border-violet-500 bg-violet-500/10 shadow-[0_0_0_1px_rgba(139,92,246,0.5)]'
+          : 'border-[#2a2d3a] bg-[#1a1d27] hover:border-[#3a3d4a] hover:bg-[#1e2130]'
+      }`}
+    >
+      {/* checkbox */}
+      <div className={`absolute top-2.5 left-2.5 w-4 h-4 rounded flex items-center justify-center border ${
+        selected ? 'bg-violet-500 border-violet-500' : 'border-[#3a3d4a] bg-transparent'
+      }`}>
+        {selected && (
+          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </div>
+      <span className="pl-6 pr-2 text-sm font-medium text-slate-100 leading-tight flex items-start gap-1.5 flex-wrap">
+        {model.name}
+        {model.isNew && (
+          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium self-center">NEW</span>
+        )}
+      </span>
+      <span className={`pl-6 text-xs font-semibold ${selected ? 'text-violet-400' : 'text-slate-400'}`}>
+        ${model.pricePerImage.toFixed(3)}
+      </span>
+    </button>
+  )
+}
+```
+
+---
+
+## src/components/SelectedSection.tsx
+
+선택된 모델을 상단에 태그 형태로 표시. 개별 해제 및 전체 해제 버튼.
+
+```typescript
+import type { ImageModel } from '../data/imageModels'
+
+interface Props {
+  selectedModels: ImageModel[]
+  onDeselect: (id: string) => void
+  onClearAll: () => void
+}
+
+export default function SelectedSection({ selectedModels, onDeselect, onClearAll }: Props) {
+  if (selectedModels.length === 0) return null
+  return (
+    <div className="border border-violet-500/30 bg-violet-500/5 rounded-2xl overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-violet-500/20">
+        <span className="text-xs font-semibold text-violet-300">선택된 모델</span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/25 text-violet-300 font-medium">{selectedModels.length}개</span>
+        <button onClick={onClearAll} className="ml-auto text-xs text-slate-500 hover:text-slate-300 transition-colors">전체 해제</button>
+      </div>
+      <div className="p-3 flex flex-wrap gap-2">
+        {selectedModels.map((m) => (
+          <div key={m.id} className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl bg-violet-500/15 border border-violet-500/30 text-sm">
+            <span className="text-slate-200 font-medium text-xs">{m.name}</span>
+            <span className="text-violet-400 text-xs font-semibold">${m.pricePerImage.toFixed(3)}</span>
+            <button
+              onClick={() => onDeselect(m.id)}
+              className="w-4 h-4 rounded-full bg-violet-500/20 hover:bg-violet-500/50 flex items-center justify-center text-slate-400 hover:text-white transition-all"
+            >
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## src/components/ProviderSection.tsx
+
+프로바이더(Together AI / OpenAI)별 섹션. 접기/펼치기 가능.
+Together AI 섹션 내부는 회사별 서브그룹으로 구분.
+OpenAI처럼 단일 회사인 경우 서브그룹 라벨 생략.
+
+```typescript
+import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
+import type { ProviderGroup } from '../data/imageModels'
+import { COMPANY_COLORS } from '../data/imageModels'
+import ModelCard from './ModelCard'
+
+interface Props {
+  group: ProviderGroup
+  selectedIds: Set<string>
+  onToggle: (id: string) => void
+}
+
+export default function ProviderSection({ group, selectedIds, onToggle }: Props) {
+  const [open, setOpen] = useState(true)
+  const totalSelected = group.companies.flatMap((c) => c.models).filter((m) => selectedIds.has(m.id)).length
+  const showCompanyLabel = group.companies.length > 1
+
+  return (
+    <div className="border border-[#2a2d3a] rounded-2xl overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-3 px-4 py-3 bg-[#14161f] hover:bg-[#1a1d27] transition-colors"
+      >
+        <ChevronDown size={16} className={`text-slate-400 transition-transform shrink-0 ${open ? '' : '-rotate-90'}`} />
+        <span className="text-sm font-bold px-3 py-0.5 rounded-full" style={{ backgroundColor: group.color + '28', color: group.color }}>
+          {group.label}
+        </span>
+        <span className="text-xs text-slate-500 font-mono">{group.apiKeyLabel}</span>
+        {totalSelected > 0 && (
+          <span className="ml-auto flex items-center gap-1 text-xs font-medium text-violet-400 bg-violet-500/15 px-2.5 py-0.5 rounded-full">
+            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+              <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {totalSelected}개 선택
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="bg-[#0f1117] px-3 pb-3">
+          {group.companies.map((company) => (
+            <div key={company.name}>
+              {showCompanyLabel && (
+                <div className="flex items-center gap-2 pt-3 pb-1.5">
+                  <span
+                    className="text-[11px] font-semibold px-2 py-0.5 rounded-md"
+                    style={{ color: COMPANY_COLORS[company.name] ?? '#94a3b8', backgroundColor: (COMPANY_COLORS[company.name] ?? '#94a3b8') + '20' }}
+                  >
+                    {company.name}
+                  </span>
+                  <div className="flex-1 h-px bg-[#2a2d3a]" />
+                </div>
+              )}
+              {!showCompanyLabel && <div className="pt-3" />}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {company.models.map((model) => (
+                  <ModelCard key={model.id} model={model} selected={selectedIds.has(model.id)} onToggle={onToggle} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+---
+
+## src/components/PromptPanel.tsx
+
+프롬프트 입력, 샘플 프롬프트, 크기 프리셋, Steps, 생성 버튼, 쿼터 바.
+
+**핵심 동작:**
+- 쿼터 소진 상태에서 생성 버튼을 disabled로 막지 않는다 (클릭 시 충전 모달 열림)
+- 선택 모델 수 > 잔여량이면 경고 문구 표시 후 잔여량만큼만 생성
+
+```typescript
+import { Wand2 } from 'lucide-react'
+
+interface Props {
+  prompt: string; onPromptChange: (v: string) => void
+  width: number; height: number; steps: number
+  onWidthChange: (v: number) => void; onHeightChange: (v: number) => void; onStepsChange: (v: number) => void
+  selectedCount: number; loading: boolean; onGenerate: () => void
+  remaining: number; cap: number
+}
+
+const SIZE_PRESETS = [
+  { label: '1:1',  w: 1024, h: 1024 },
+  { label: '16:9', w: 1344, h: 768  },
+  { label: '9:16', w: 768,  h: 1344 },
+  { label: '4:3',  w: 1152, h: 896  },
+]
+
+const SAMPLE_PROMPTS = [
+  { label: '🌅 풍경',     text: 'A breathtaking sunset over misty mountains, golden hour light, cinematic photography, ultra-detailed, 8k resolution' },
+  { label: '🤖 사이버펑크', text: 'A futuristic cyberpunk city at night, neon lights reflecting on wet streets, flying cars, ultra-realistic, cinematic' },
+  { label: '🌸 인물',     text: 'Portrait of a young woman with flowing hair in a flower garden, soft natural light, bokeh background, hyperrealistic' },
+  { label: '🎌 애니',     text: 'Anime style illustration of a girl standing on a rooftop at sunset, cherry blossoms falling, detailed eyes, vibrant colors, Studio Ghibli inspired, 4k' },
+]
+
+export default function PromptPanel({ prompt, onPromptChange, width, height, steps, onWidthChange, onHeightChange, onStepsChange, selectedCount, loading, onGenerate, remaining, cap }: Props) {
+  const isExhausted = remaining === 0
+  const willExceed  = selectedCount > remaining
+  const barPct      = Math.round(((cap - remaining) / cap) * 100)
+
+  return (
+    <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-4 flex flex-col gap-3">
+      {/* quota bar */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-1.5 bg-[#0f1117] rounded-full overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${isExhausted ? 'bg-red-500' : remaining <= 3 ? 'bg-amber-500' : 'bg-violet-500'}`} style={{ width: `${barPct}%` }} />
+        </div>
+        <span className={`text-xs font-medium whitespace-nowrap ${isExhausted ? 'text-red-400' : remaining <= 3 ? 'text-amber-400' : 'text-slate-400'}`}>
+          {isExhausted ? '한도 소진' : `잔여 ${remaining} / ${cap}장`}
+        </span>
+      </div>
+
+      {/* sample prompts */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-slate-500">샘플:</span>
+        {SAMPLE_PROMPTS.map((s) => (
+          <button key={s.label} onClick={() => onPromptChange(s.text)} className="text-xs px-2.5 py-1 rounded-lg border border-[#2a2d3a] text-slate-400 hover:border-violet-500/50 hover:text-violet-300 hover:bg-violet-500/5 transition-all">
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* prompt textarea */}
+      <textarea
+        value={prompt}
+        onChange={(e) => onPromptChange(e.target.value)}
+        placeholder="이미지 프롬프트를 입력하세요... (예: a beautiful sunset over mountains, photorealistic)"
+        rows={3}
+        className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 outline-none resize-none focus:border-violet-500/50 transition-colors"
+      />
+
+      <div className="flex flex-wrap items-center gap-3">
+        {/* size presets */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500">크기</span>
+          {SIZE_PRESETS.map((p) => (
+            <button key={p.label} onClick={() => { onWidthChange(p.w); onHeightChange(p.h) }}
+              className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${width === p.w && height === p.h ? 'bg-violet-500/20 border-violet-500 text-violet-300' : 'border-[#2a2d3a] text-slate-400 hover:border-slate-500'}`}>
+              {p.label}
+            </button>
+          ))}
+          <span className="text-xs text-slate-600 ml-1">{width}×{height}</span>
+        </div>
+
+        {/* steps */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">Steps</span>
+          <input type="number" min={1} max={50} value={steps} onChange={(e) => onStepsChange(Number(e.target.value))}
+            className="w-14 bg-[#0f1117] border border-[#2a2d3a] rounded-lg px-2 py-1 text-xs text-slate-300 outline-none focus:border-violet-500/50 text-center" />
+        </div>
+
+        {/* generate button — ⚠️ disabled에 isExhausted 포함하지 않는다 */}
+        <div className="ml-auto flex flex-col items-end gap-1">
+          {willExceed && !isExhausted && (
+            <p className="text-xs text-amber-400">{selectedCount}개 선택, 잔여 {remaining}장 — {remaining}개 모델까지만 생성됩니다</p>
+          )}
+          <button
+            onClick={onGenerate}
+            disabled={loading || selectedCount === 0}
+            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium transition-all ${
+              loading || selectedCount === 0 ? 'bg-[#2a2d3a] text-slate-600 cursor-not-allowed'
+              : isExhausted ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-500/20'
+              : 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20'
+            }`}
+          >
+            <Wand2 size={15} />
+            {loading ? '생성 중...' : isExhausted ? '🔒 한도 소진 — 암호로 충전' : selectedCount === 0 ? '모델 선택 필요' : `${Math.min(selectedCount, remaining)}개 모델로 생성`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## src/components/ResultsPanel.tsx
+
+생성 결과 그리드. 로딩 중엔 spinner 플레이스홀더. hover 시 다운로드 버튼.
+에러 모델은 에러 메시지 표시. 하단에 에러 로그 패널.
+
+```typescript
+import { Download, AlertCircle, Loader2, Terminal } from 'lucide-react'
+import type { GeneratedResult } from '../hooks/useImageGen'
+
+interface Props {
+  results: GeneratedResult[]
+  loading: boolean
+  selectedCount: number
+}
+
+export default function ResultsPanel({ results, loading, selectedCount }: Props) {
+  if (!loading && results.length === 0) return null
+
+  function download(r: GeneratedResult) {
+    if (!r.url) return
+    const a = document.createElement('a')
+    a.href = r.url
+    a.download = `${r.modelName.replace(/\s+/g, '_')}.png`
+    a.click()
+  }
+
+  return (
+    <div className="mt-2">
+      <h2 className="text-sm font-semibold text-slate-400 mb-3">생성 결과</h2>
+      {loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {Array.from({ length: selectedCount }).map((_, i) => (
+            <div key={i} className="aspect-square rounded-xl bg-[#1a1d27] border border-[#2a2d3a] flex items-center justify-center">
+              <Loader2 size={24} className="text-violet-400 animate-spin" />
+            </div>
+          ))}
+        </div>
+      )}
+      {!loading && results.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {results.map((r) => (
+              <div key={r.modelId} className="group relative rounded-xl overflow-hidden border border-[#2a2d3a] bg-[#1a1d27]">
+                {r.error ? (
+                  <div className="aspect-square flex flex-col items-center justify-center gap-2 p-3">
+                    <AlertCircle size={24} className="text-red-400" />
+                    <p className="text-xs text-red-400 text-center">{r.error}</p>
+                  </div>
+                ) : (
+                  <>
+                    <img src={r.url} alt={r.modelName} className="w-full aspect-square object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
+                      <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform flex items-center justify-between">
+                        <span className="text-xs text-white font-medium truncate max-w-[70%]">{r.modelName}</span>
+                        <button onClick={() => download(r)} className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors">
+                          <Download size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+                <div className="px-2 py-1.5 border-t border-[#2a2d3a]">
+                  <p className="text-xs text-slate-400 truncate">{r.modelName}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {results.some((r) => r.error) && (
+            <div className="mt-4 bg-[#0f1117] border border-red-500/20 rounded-xl overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2 border-b border-red-500/20 bg-red-500/5">
+                <Terminal size={13} className="text-red-400" />
+                <span className="text-xs font-semibold text-red-400">에러 로그</span>
+                <span className="text-xs text-slate-500 ml-auto">{results.filter((r) => r.error).length}개 실패</span>
+              </div>
+              <div className="p-3 flex flex-col gap-1.5 font-mono text-xs">
+                {results.filter((r) => r.error).map((r) => (
+                  <div key={r.modelId} className="flex gap-3">
+                    <span className="text-red-500 shrink-0">✗</span>
+                    <span className="text-slate-400 shrink-0 max-w-[160px] truncate">{r.modelName}</span>
+                    <span className="text-red-300 break-all">{r.error}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+```
+
+---
+
+## src/App.tsx
+
+```typescript
+import { useState, useMemo } from 'react'
+import { Search } from 'lucide-react'
+import { IMAGE_MODELS, groupByProvider } from './data/imageModels'
+import ApiKeyInput from './components/ApiKeyInput'
+import ProviderSection from './components/ProviderSection'
+import SelectedSection from './components/SelectedSection'
+import PromptPanel from './components/PromptPanel'
+import ResultsPanel from './components/ResultsPanel'
+import { useImageGen, type ApiKeys } from './hooks/useImageGen'
+import { useQuota } from './hooks/useQuota'
+import PasscodeModal from './components/PasscodeModal'
+import AppGateModal, { isGateUnlocked } from './components/AppGateModal'
+
+type SortMode = 'default' | 'price'
+
+// sessionStorage: cleared automatically when browser tab/window closes
+function loadApiKeys(): ApiKeys {
+  return {
+    together: sessionStorage.getItem('key_together') ?? '',
+    openai:   sessionStorage.getItem('key_openai')   ?? '',
+  }
+}
+
+export default function App() {
+  const [apiKeys, setApiKeys] = useState<ApiKeys>(loadApiKeys)
+  const [search, setSearch]   = useState('')
+  const [sortMode, setSortMode] = useState<SortMode>('price')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  const [prompt, setPrompt] = useState('')
+  const [width, setWidth]   = useState(1024)
+  const [height, setHeight] = useState(1024)
+  const [steps, setSteps]   = useState(4)
+
+  const { loading, results, error, generateAll }               = useImageGen(apiKeys)
+  const { remaining, isExhausted, cap, ADD_AMOUNT, consume, tryUnlock } = useQuota()
+  const [showPasscode, setShowPasscode] = useState(false)
+  const [gateOpen, setGateOpen]         = useState(isGateUnlocked)
+
+  function handleApiKeysChange(keys: ApiKeys) {
+    setApiKeys(keys)
+    sessionStorage.setItem('key_together', keys.together)
+    sessionStorage.setItem('key_openai',   keys.openai)
+  }
+
+  function toggleModel(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const filteredGroups = useMemo(() => {
+    const q = search.toLowerCase()
+    let models = IMAGE_MODELS.filter(
+      (m) => m.name.toLowerCase().includes(q) || m.author.toLowerCase().includes(q),
+    )
+    if (sortMode === 'price') {
+      models = [...models].sort((a, b) => a.pricePerImage - b.pricePerImage)
+    }
+    return groupByProvider(models)
+  }, [search, sortMode])
+
+  const selectedModels = IMAGE_MODELS.filter((m) => selectedIds.has(m.id))
+
+  function handleGenerate() {
+    if (isExhausted) { setShowPasscode(true); return }
+    const capped = selectedModels.slice(0, remaining)
+    if (!consume(capped.length)) return
+    generateAll(
+      capped.map((m) => ({ modelId: m.modelId, name: m.name, provider: m.provider, noSteps: m.noSteps })),
+      prompt, width, height, steps,
+    )
+  }
+
+  if (!gateOpen) return <AppGateModal onUnlock={() => setGateOpen(true)} />
+
+  return (
+    <div className="min-h-screen bg-[#0f1117]">
+      {showPasscode && (
+        <PasscodeModal onUnlock={tryUnlock} onClose={() => setShowPasscode(false)} addAmount={ADD_AMOUNT} />
+      )}
+
+      {/* top bar */}
+      <header className="sticky top-0 z-10 bg-[#0f1117]/90 backdrop-blur border-b border-[#2a2d3a] px-4 py-3">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-3">
+          <h1 className="text-base font-bold text-slate-100 whitespace-nowrap">🎨 Multi Image Gen</h1>
+
+          {/* sort toggle */}
+          <div className="flex items-center gap-1 bg-[#1a1d27] border border-[#2a2d3a] rounded-xl p-1">
+            <span className="text-xs text-slate-500 px-2">정렬</span>
+            {(['default', 'price'] as SortMode[]).map((mode) => (
+              <button key={mode} onClick={() => setSortMode(mode)}
+                className={`text-xs px-3 py-1 rounded-lg transition-colors ${sortMode === mode ? 'bg-[#2a2d3a] text-slate-200' : 'text-slate-500 hover:text-slate-300'}`}>
+                {mode === 'default' ? '기본' : '가격 낮은 순'}
+              </button>
+            ))}
+          </div>
+
+          {/* search */}
+          <div className="flex items-center gap-2 bg-[#1a1d27] border border-[#2a2d3a] rounded-xl px-3 py-2 flex-1 min-w-[180px]">
+            <Search size={14} className="text-slate-500 shrink-0" />
+            <input
+              type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="모델 또는 회사 검색..."
+              className="flex-1 bg-transparent text-sm text-slate-200 placeholder:text-slate-600 outline-none"
+            />
+            {search && <button onClick={() => setSearch('')} className="text-slate-600 hover:text-slate-400 text-xs">✕</button>}
+          </div>
+
+          <ApiKeyInput apiKeys={apiKeys} onChange={handleApiKeysChange} />
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-5 flex flex-col gap-4">
+        <PromptPanel
+          prompt={prompt} onPromptChange={setPrompt}
+          width={width} height={height} steps={steps}
+          onWidthChange={setWidth} onHeightChange={setHeight} onStepsChange={setSteps}
+          selectedCount={selectedModels.length} loading={loading} onGenerate={handleGenerate}
+          remaining={remaining} cap={cap}
+        />
+
+        {error && (
+          <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5">{error}</div>
+        )}
+
+        <SelectedSection selectedModels={selectedModels} onDeselect={toggleModel} onClearAll={() => setSelectedIds(new Set())} />
+
+        <div className="flex flex-col gap-3">
+          {filteredGroups.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-10">검색 결과가 없습니다.</p>
+          ) : (
+            filteredGroups.map((group) => (
+              <ProviderSection key={group.provider} group={group} selectedIds={selectedIds} onToggle={toggleModel} />
+            ))
+          )}
+        </div>
+
+        <ResultsPanel results={results} loading={loading} selectedCount={selectedModels.length} />
+      </main>
+    </div>
+  )
+}
+```
+
+---
+
+## ⚠️ 반드시 지켜야 할 주의사항
+
+### 1. noSteps 플래그
+Qwen, ByteDance, Wan-AI, Ideogram, Google, OpenAI via Together 모델은
+`steps` 파라미터를 전송하면 아래 에러 발생:
+  "Invalid parameter detected. The parameter 'steps' is not recognized."
+→ `noSteps: true`인 모델은 API 호출 시 steps 파라미터를 생략할 것
+
+### 2. OpenAI response_format
+- `dall-e-3` / `dall-e-3-hd` → `response_format: 'b64_json'` 지원
+- `gpt-image-1` → `response_format` 파라미터 자체가 없음 (전송 시 에러)
+→ `realModelId.startsWith('dall-e')`일 때만 response_format 추가
+
+### 3. 모델 ID 대소문자 (Together AI는 정확히 구분)
+- HiDream: `HiDream-ai/HiDream-I1-Fast` (소문자 x)
+- ByteDance: `ByteDance-Seed/Seedream-3.0` (ByteDance 아님)
+- Wan-AI: `Wan-AI/Wan-2.6-Image` (Wan2.6 아님)
+- Ideogram: `ideogram/ideogram-3.0` (ideogram-ai 아님)
+- Qwen: `Qwen/Qwen-Image-2.0`
+
+### 4. serverless 미지원 모델 — 추가 금지
+아래 모델은 Together AI serverless 방식 미지원:
+- `prompthero/openjourney`
+- FLUX.2 계열 전체 (FLUX.2-dev, FLUX.2-flex, FLUX.2-pro, FLUX.2-max)
+- `black-forest-labs/FLUX.1-dev` (krea-dev로 대체됨)
+
+### 5. 쿼터 소진 시 모달 접근 버그 방지
+생성 버튼에 `disabled={isExhausted}` 조건 절대 추가 금지.
+isExhausted 상태에서도 버튼 클릭 → handleGenerate → PasscodeModal 오픈 흐름 유지.
+버튼 스타일만 amber로 변경할 것.
+
+---
+
+## GitHub Pages 배포
+
+**.github/workflows/deploy.yml**:
+```yaml
+name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: github-pages
+          path: dist/
+      - uses: actions/deploy-pages@v4
+        id: deployment
+```
+
+GitHub 저장소 Settings → Pages → Source → **GitHub Actions** 선택 필수
+
+---
+
+## 암호 요약
+
+| 용도          | 암호   | 저장소          | 비고                             |
+|---------------|--------|-----------------|----------------------------------|
+| 앱 입장 게이트 | 1234   | sessionStorage  | 탭 닫으면 초기화                  |
+| 쿼터 충전      | 124578 | localStorage    | 브라우저 유지, 충전마다 +10장      |
+
+================================================================
