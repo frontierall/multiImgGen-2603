@@ -11,7 +11,14 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(git config:*)",
-      "Bash(brew install:*)"
+      "Bash(brew install:*)",
+      "WebFetch(domain:www.together.ai)",
+      "WebFetch(domain:openai.com)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:costgoat.com)",
+      "WebFetch(domain:www.aifreeapi.com)",
+      "WebFetch(domain:invertedstone.com)",
+      "WebFetch(domain:langcopilot.com)"
     ]
   }
 }
