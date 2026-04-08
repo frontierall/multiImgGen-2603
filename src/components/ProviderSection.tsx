@@ -17,15 +17,14 @@ export default function ProviderSection({ group, selectedIds, onToggle }: Props)
     .flatMap((c) => c.models)
     .filter((m) => selectedIds.has(m.id)).length
 
-  // single-company providers (OpenAI, Google) don't need company sub-labels
   const showCompanyLabel = group.companies.length > 1
 
   return (
-    <div className="border border-[#2a2d3a] rounded-2xl overflow-hidden">
+    <div className="border border-slate-200 dark:border-[#2a2d3a] rounded-2xl overflow-hidden">
       {/* section header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 bg-[#14161f] hover:bg-[#1a1d27] transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 bg-slate-100 dark:bg-[#14161f] hover:bg-slate-200 dark:hover:bg-[#1a1d27] transition-colors"
       >
         <ChevronDown
           size={16}
@@ -37,7 +36,7 @@ export default function ProviderSection({ group, selectedIds, onToggle }: Props)
         >
           {group.label}
         </span>
-        <span className="text-xs text-slate-500 font-mono">{group.apiKeyLabel}</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">{group.apiKeyLabel}</span>
 
         {totalSelected > 0 && (
           <span className="ml-auto flex items-center gap-1 text-xs font-medium text-violet-400 bg-violet-500/15 px-2.5 py-0.5 rounded-full">
@@ -51,7 +50,7 @@ export default function ProviderSection({ group, selectedIds, onToggle }: Props)
 
       {/* model grid */}
       {open && (
-        <div className="bg-[#0f1117] px-3 pb-3">
+        <div className="bg-slate-50 dark:bg-[#0f1117] px-3 pb-3">
           {group.companies.map((company) => (
             <div key={company.name}>
               {showCompanyLabel && (
@@ -65,7 +64,7 @@ export default function ProviderSection({ group, selectedIds, onToggle }: Props)
                   >
                     {company.name}
                   </span>
-                  <div className="flex-1 h-px bg-[#2a2d3a]" />
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-[#2a2d3a]" />
                 </div>
               )}
               {!showCompanyLabel && <div className="pt-3" />}

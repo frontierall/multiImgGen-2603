@@ -23,6 +23,13 @@ const SIZE_PRESETS = [
   { label: '4:3', w: 1152, h: 896 },
 ]
 
+const STYLE_TAGS = [
+  { label: '🗂️ 심플', suffix: 'clean presentation illustration, minimal composition, modern corporate style' },
+  { label: '🔄 직관적', suffix: 'clear circular workflow, visual process arrows, simple dashboard UI' },
+  { label: '✨ 트렌디', suffix: 'flat 3D illustration, modern product design style' },
+  { label: '🤝 친근한', suffix: 'friendly AI assistant, approachable learning environment, soft lighting' },
+]
+
 const SAMPLE_PROMPTS = [
   {
     label: '🌅 풍경',
@@ -62,10 +69,10 @@ export default function PromptPanel({
   const barPct      = Math.round(((cap - remaining) / cap) * 100)
 
   return (
-    <div className="bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-4 flex flex-col gap-3">
+    <div className="bg-white dark:bg-[#1a1d27] border border-slate-200 dark:border-[#2a2d3a] rounded-2xl p-4 flex flex-col gap-3">
       {/* quota bar */}
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-1.5 bg-[#0f1117] rounded-full overflow-hidden">
+        <div className="flex-1 h-1.5 bg-slate-100 dark:bg-[#0f1117] rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${
               isExhausted ? 'bg-red-500' : remaining <= 3 ? 'bg-amber-500' : 'bg-violet-500'
@@ -74,7 +81,7 @@ export default function PromptPanel({
           />
         </div>
         <span className={`text-xs font-medium whitespace-nowrap ${
-          isExhausted ? 'text-red-400' : remaining <= 3 ? 'text-amber-400' : 'text-slate-400'
+          isExhausted ? 'text-red-400' : remaining <= 3 ? 'text-amber-400' : 'text-slate-500 dark:text-slate-400'
         }`}>
           {isExhausted ? '한도 소진' : `잔여 ${remaining} / ${cap}장`}
         </span>
@@ -82,12 +89,30 @@ export default function PromptPanel({
 
       {/* sample prompts */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-slate-500">샘플:</span>
+        <span className="text-xs text-slate-400 dark:text-slate-500">샘플:</span>
         {SAMPLE_PROMPTS.map((s) => (
           <button
             key={s.label}
             onClick={() => onPromptChange(s.text)}
-            className="text-xs px-2.5 py-1 rounded-lg border border-[#2a2d3a] text-slate-400 hover:border-violet-500/50 hover:text-violet-300 hover:bg-violet-500/5 transition-all"
+            className="text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-[#2a2d3a] text-slate-500 dark:text-slate-400 hover:border-violet-500/50 hover:text-violet-500 dark:hover:text-violet-300 hover:bg-violet-500/5 transition-all"
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* style tags */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-slate-400 dark:text-slate-500">스타일:</span>
+        {STYLE_TAGS.map((s) => (
+          <button
+            key={s.label}
+            onClick={() => {
+              const trimmed = prompt.trimEnd()
+              const separator = trimmed.endsWith(',') ? ' ' : trimmed ? ', ' : ''
+              onPromptChange(trimmed + separator + s.suffix)
+            }}
+            className="text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-[#2a2d3a] text-slate-500 dark:text-slate-400 hover:border-emerald-500/50 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-emerald-500/5 transition-all"
           >
             {s.label}
           </button>
@@ -100,13 +125,13 @@ export default function PromptPanel({
         onChange={(e) => onPromptChange(e.target.value)}
         placeholder="이미지 프롬프트를 입력하세요... (예: a beautiful sunset over mountains, photorealistic)"
         rows={3}
-        className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-xl px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 outline-none resize-none focus:border-violet-500/50 transition-colors"
+        className="w-full bg-slate-50 dark:bg-[#0f1117] border border-slate-200 dark:border-[#2a2d3a] rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 outline-none resize-none focus:border-violet-500/50 transition-colors"
       />
 
       <div className="flex flex-wrap items-center gap-3">
         {/* size presets */}
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">크기</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">크기</span>
           {SIZE_PRESETS.map((p) => (
             <button
               key={p.label}
@@ -116,35 +141,35 @@ export default function PromptPanel({
               }}
               className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${
                 width === p.w && height === p.h
-                  ? 'bg-violet-500/20 border-violet-500 text-violet-300'
-                  : 'border-[#2a2d3a] text-slate-400 hover:border-slate-500'
+                  ? 'bg-violet-500/20 border-violet-500 text-violet-600 dark:text-violet-300'
+                  : 'border-slate-200 dark:border-[#2a2d3a] text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500'
               }`}
             >
               {p.label}
             </button>
           ))}
-          <span className="text-xs text-slate-600 ml-1">
+          <span className="text-xs text-slate-400 dark:text-slate-600 ml-1">
             {width}×{height}
           </span>
         </div>
 
         {/* steps */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">Steps</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">Steps</span>
           <input
             type="number"
             min={1}
             max={50}
             value={steps}
             onChange={(e) => onStepsChange(Number(e.target.value))}
-            className="w-14 bg-[#0f1117] border border-[#2a2d3a] rounded-lg px-2 py-1 text-xs text-slate-300 outline-none focus:border-violet-500/50 text-center"
+            className="w-14 bg-slate-50 dark:bg-[#0f1117] border border-slate-200 dark:border-[#2a2d3a] rounded-lg px-2 py-1 text-xs text-slate-600 dark:text-slate-300 outline-none focus:border-violet-500/50 text-center"
           />
         </div>
 
         {/* generate button */}
         <div className="ml-auto flex flex-col items-end gap-1">
           {willExceed && !isExhausted && (
-            <p className="text-xs text-amber-400">
+            <p className="text-xs text-amber-500 dark:text-amber-400">
               {selectedCount}개 선택, 잔여 {remaining}장 — {remaining}개 모델까지만 생성됩니다
             </p>
           )}
@@ -153,7 +178,7 @@ export default function PromptPanel({
             disabled={loading || selectedCount === 0}
             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium transition-all ${
               loading || selectedCount === 0
-                ? 'bg-[#2a2d3a] text-slate-600 cursor-not-allowed'
+                ? 'bg-slate-200 dark:bg-[#2a2d3a] text-slate-400 dark:text-slate-600 cursor-not-allowed'
                 : isExhausted
                 ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-500/20'
                 : 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20'

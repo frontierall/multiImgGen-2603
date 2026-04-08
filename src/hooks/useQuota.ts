@@ -4,7 +4,7 @@ const STORAGE_KEY = 'img_gen_used'
 const CAP_KEY     = 'img_gen_cap'
 const BASE_CAP    = 10
 const ADD_AMOUNT  = 10
-const PASSCODE    = '124578'
+const PASSCODE    = '1010'
 
 export function useQuota() {
   const [used, setUsed] = useState<number>(() =>

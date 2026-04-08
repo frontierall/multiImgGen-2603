@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { Search } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Search, Sun, Moon } from 'lucide-react'
 import { IMAGE_MODELS, groupByProvider } from './data/imageModels'
 import ApiKeyInput from './components/ApiKeyInput'
 import ProviderSection from './components/ProviderSection'
@@ -32,6 +32,13 @@ export default function App() {
   const [height, setHeight]   = useState(1024)
   const [steps, setSteps]     = useState(4)
 
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') !== 'light')
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark)
+    localStorage.setItem('theme', isDark ? 'dark' : 'light')
+  }, [isDark])
+
   const { loading, results, error, generateAll }          = useImageGen(apiKeys)
   const { remaining, isExhausted, cap, ADD_AMOUNT, consume, tryUnlock } = useQuota()
   const [showPasscode, setShowPasscode] = useState(false)
@@ -39,7 +46,6 @@ export default function App() {
 
   function handleApiKeysChange(keys: ApiKeys) {
     setApiKeys(keys)
-    // sessionStorage — wiped when the browser tab/window closes (no localStorage used)
     sessionStorage.setItem('key_together', keys.together)
     sessionStorage.setItem('key_openai',   keys.openai)
   }
@@ -78,27 +84,29 @@ export default function App() {
   if (!gateOpen) return <AppGateModal onUnlock={() => setGateOpen(true)} />
 
   return (
-    <div className="min-h-screen bg-[#0f1117]">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0f1117]">
       {showPasscode && (
         <PasscodeModal onUnlock={tryUnlock} onClose={() => setShowPasscode(false)} addAmount={ADD_AMOUNT} />
       )}
 
       {/* top bar */}
-      <header className="sticky top-0 z-10 bg-[#0f1117]/90 backdrop-blur border-b border-[#2a2d3a] px-4 py-3">
+      <header className="sticky top-0 z-10 bg-white/90 dark:bg-[#0f1117]/90 backdrop-blur border-b border-slate-200 dark:border-[#2a2d3a] px-4 py-3">
         <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-3">
-          <h1 className="text-base font-bold text-slate-100 whitespace-nowrap">
+          <h1 className="text-base font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">
             🎨 Multi Image Gen
           </h1>
 
           {/* sort toggle */}
-          <div className="flex items-center gap-1 bg-[#1a1d27] border border-[#2a2d3a] rounded-xl p-1">
-            <span className="text-xs text-slate-500 px-2">정렬</span>
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#1a1d27] border border-slate-200 dark:border-[#2a2d3a] rounded-xl p-1">
+            <span className="text-xs text-slate-400 dark:text-slate-500 px-2">정렬</span>
             {(['default', 'price'] as SortMode[]).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setSortMode(mode)}
                 className={`text-xs px-3 py-1 rounded-lg transition-colors ${
-                  sortMode === mode ? 'bg-[#2a2d3a] text-slate-200' : 'text-slate-500 hover:text-slate-300'
+                  sortMode === mode
+                    ? 'bg-white dark:bg-[#2a2d3a] text-slate-700 dark:text-slate-200'
+                    : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
                 }`}
               >
                 {mode === 'default' ? '기본' : '가격 낮은 순'}
@@ -107,22 +115,31 @@ export default function App() {
           </div>
 
           {/* search */}
-          <div className="flex items-center gap-2 bg-[#1a1d27] border border-[#2a2d3a] rounded-xl px-3 py-2 flex-1 min-w-[180px]">
-            <Search size={14} className="text-slate-500 shrink-0" />
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-[#1a1d27] border border-slate-200 dark:border-[#2a2d3a] rounded-xl px-3 py-2 flex-1 min-w-[180px]">
+            <Search size={14} className="text-slate-400 dark:text-slate-500 shrink-0" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="모델 또는 회사 검색..."
-              className="flex-1 bg-transparent text-sm text-slate-200 placeholder:text-slate-600 outline-none"
+              className="flex-1 bg-transparent text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 outline-none"
             />
             {search && (
-              <button onClick={() => setSearch('')} className="text-slate-600 hover:text-slate-400 text-xs">✕</button>
+              <button onClick={() => setSearch('')} className="text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 text-xs">✕</button>
             )}
           </div>
 
           {/* api keys */}
           <ApiKeyInput apiKeys={apiKeys} onChange={handleApiKeysChange} />
+
+          {/* theme toggle */}
+          <button
+            onClick={() => setIsDark(v => !v)}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-[#1a1d27] border border-slate-200 dark:border-[#2a2d3a] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+            title={isDark ? '라이트 모드' : '다크 모드'}
+          >
+            {isDark ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
         </div>
       </header>
 
@@ -160,7 +177,7 @@ export default function App() {
         {/* ── provider sections ── */}
         <div className="flex flex-col gap-3">
           {filteredGroups.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-10">검색 결과가 없습니다.</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-10">검색 결과가 없습니다.</p>
           ) : (
             filteredGroups.map((group) => (
               <ProviderSection

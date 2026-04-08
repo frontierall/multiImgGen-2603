@@ -21,7 +21,7 @@ export default function SelectedSection({ selectedModels, onDeselect, onClearAll
         </span>
         <button
           onClick={onClearAll}
-          className="ml-auto text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          className="ml-auto text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
         >
           전체 해제
         </button>
@@ -34,7 +34,7 @@ export default function SelectedSection({ selectedModels, onDeselect, onClearAll
             key={m.id}
             className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-xl bg-violet-500/15 border border-violet-500/30 text-sm"
           >
-            <span className="text-slate-200 font-medium text-xs">{m.name}</span>
+            <span className="text-slate-700 dark:text-slate-200 font-medium text-xs">{m.name}</span>
             <span className="text-violet-400 text-xs font-semibold">${m.pricePerImage.toFixed(3)}</span>
             <button
               onClick={() => onDeselect(m.id)}

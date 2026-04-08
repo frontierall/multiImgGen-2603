@@ -15,7 +15,7 @@ export default function ModelCard({ model, selected, onToggle }: Props) {
         ${
           selected
             ? 'border-violet-500 bg-violet-500/10 shadow-[0_0_0_1px_rgba(139,92,246,0.5)]'
-            : 'border-[#2a2d3a] bg-[#1a1d27] hover:border-[#3a3d4a] hover:bg-[#1e2130]'
+            : 'border-slate-200 dark:border-[#2a2d3a] bg-white dark:bg-[#1a1d27] hover:border-slate-300 dark:hover:border-[#3a3d4a] hover:bg-slate-50 dark:hover:bg-[#1e2130]'
         }
       `}
     >
@@ -23,7 +23,7 @@ export default function ModelCard({ model, selected, onToggle }: Props) {
       <div
         className={`
           absolute top-2.5 left-2.5 w-4 h-4 rounded flex items-center justify-center border
-          ${selected ? 'bg-violet-500 border-violet-500' : 'border-[#3a3d4a] bg-transparent'}
+          ${selected ? 'bg-violet-500 border-violet-500' : 'border-slate-300 dark:border-[#3a3d4a] bg-transparent'}
         `}
       >
         {selected && (
@@ -33,7 +33,7 @@ export default function ModelCard({ model, selected, onToggle }: Props) {
         )}
       </div>
 
-      <span className="pl-6 pr-2 text-sm font-medium text-slate-100 leading-tight flex items-start gap-1.5 flex-wrap">
+      <span className="pl-6 pr-2 text-sm font-medium text-slate-800 dark:text-slate-100 leading-tight flex items-start gap-1.5 flex-wrap">
         {model.name}
         {model.isNew && (
           <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium self-center">
@@ -41,7 +41,7 @@ export default function ModelCard({ model, selected, onToggle }: Props) {
           </span>
         )}
       </span>
-      <span className={`pl-6 text-xs font-semibold ${selected ? 'text-violet-400' : 'text-slate-400'}`}>
+      <span className={`pl-6 text-xs font-semibold ${selected ? 'text-violet-400' : 'text-slate-500 dark:text-slate-400'}`}>
         ${model.pricePerImage.toFixed(3)}
       </span>
     </button>
