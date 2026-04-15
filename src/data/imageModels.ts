@@ -7,7 +7,8 @@ export interface ImageModel {
   pricePerImage: number // USD per image (1024×1024 기준)
   modelId: string
   provider: Provider
-  noSteps?: boolean   // true: steps 파라미터 미지원 모델
+  noSteps?: boolean          // true: steps 파라미터 미지원 모델
+  supportsNegative?: boolean // true: negative_prompt 파라미터 지원 모델
   isNew?: boolean
 }
 
@@ -69,6 +70,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.002,
     modelId: 'stabilityai/stable-diffusion-xl-base-1.0',
     provider: 'together',
+    supportsNegative: true,
   },
   {
     id: 'sd3-medium',
@@ -77,6 +79,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.002,
     modelId: 'stabilityai/stable-diffusion-3-medium',
     provider: 'together',
+    supportsNegative: true,
   },
 
   // ── Lykon ────────────────────────────────────────────────────
@@ -87,6 +90,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.001,
     modelId: 'Lykon/DreamShaper',
     provider: 'together',
+    supportsNegative: true,
   },
 
   // ── RunDiffusion ─────────────────────────────────────────────
@@ -97,6 +101,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.002,
     modelId: 'RunDiffusion/Juggernaut-Lightning-Flux',
     provider: 'together',
+    supportsNegative: true,
   },
   {
     id: 'juggernaut-pro-flux',
@@ -105,6 +110,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     pricePerImage: 0.005,
     modelId: 'RunDiffusion/Juggernaut-pro-flux',
     provider: 'together',
+    supportsNegative: true,
   },
 
   // ── HiDream ──────────────────────────────────────────────────

@@ -1,12 +1,16 @@
+import { COMPANY_COLORS } from '../data/imageModels'
 import type { ImageModel } from '../data/imageModels'
 
 interface Props {
   model: ImageModel
   selected: boolean
   onToggle: (id: string) => void
+  overridePrice?: number
 }
 
-export default function ModelCard({ model, selected, onToggle }: Props) {
+export default function ModelCard({ model, selected, onToggle, overridePrice }: Props) {
+  const displayPrice = overridePrice ?? model.pricePerImage
+  const priceChanged = overridePrice !== undefined && overridePrice !== model.pricePerImage
   return (
     <button
       onClick={() => onToggle(model.id)}
@@ -41,8 +45,28 @@ export default function ModelCard({ model, selected, onToggle }: Props) {
           </span>
         )}
       </span>
-      <span className={`pl-6 text-xs font-semibold ${selected ? 'text-violet-400' : 'text-slate-500 dark:text-slate-400'}`}>
-        ${model.pricePerImage.toFixed(3)}
+      <div className="pl-6 pr-2">
+        <span
+          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          style={{
+            color: COMPANY_COLORS[model.author] ?? '#94a3b8',
+            backgroundColor: (COMPANY_COLORS[model.author] ?? '#94a3b8') + '20',
+          }}
+        >
+          {model.author}
+        </span>
+      </div>
+      <span className={`pl-6 text-xs font-semibold flex items-center gap-1 flex-wrap ${selected ? 'text-violet-400' : 'text-slate-500 dark:text-slate-400'}`}>
+        ${displayPrice.toFixed(3)}
+        {priceChanged && (
+          <span className={`text-[9px] px-1 py-0.5 rounded font-medium ${
+            overridePrice! > model.pricePerImage
+              ? 'bg-red-500/15 text-red-400'
+              : 'bg-emerald-500/15 text-emerald-400'
+          }`}>
+            {overridePrice! > model.pricePerImage ? '↑' : '↓'} ${model.pricePerImage.toFixed(3)}
+          </span>
+        )}
       </span>
     </button>
   )

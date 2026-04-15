@@ -6,11 +6,20 @@ export interface GeneratedResult {
   modelName: string
   url: string
   error?: string
+  loading?: boolean // true: 아직 생성 중인 placeholder
+}
+
+export interface HistoryEntry {
+  id: number
+  prompt: string
+  negPrompt: string
+  results: GeneratedResult[]
 }
 
 export interface ApiKeys {
   together: string
   openai: string
+  openrouter: string
 }
 
 interface ModelRequest {
@@ -18,6 +27,13 @@ interface ModelRequest {
   name: string
   provider: Provider
   noSteps?: boolean
+  supportsNegative?: boolean
+}
+
+function shouldOmitSteps(modelId: string, noSteps: boolean) {
+  if (noSteps) return true
+
+  return modelId.startsWith('google/')
 }
 
 // ── Together AI ───────────────────────────────────────────────
@@ -26,13 +42,16 @@ async function generateTogether(
   modelId: string,
   modelName: string,
   prompt: string,
+  negPrompt: string,
   width: number,
   height: number,
   steps: number,
   noSteps: boolean,
+  supportsNegative: boolean,
 ): Promise<GeneratedResult> {
   const body: Record<string, unknown> = { model: modelId, prompt, width, height, n: 1, response_format: 'b64_json' }
-  if (!noSteps) body.steps = steps
+  if (!shouldOmitSteps(modelId, noSteps)) body.steps = steps
+  if (supportsNegative && negPrompt.trim()) body.negative_prompt = negPrompt
 
   const res = await fetch('https://api.together.xyz/v1/images/generations', {
     method: 'POST',
@@ -96,35 +115,48 @@ export function useImageGen(apiKeys: ApiKeys) {
   async function generateAll(
     models: ModelRequest[],
     prompt: string,
+    negPrompt: string,
     width: number,
     height: number,
     steps: number,
-  ) {
-    if (!prompt.trim()) { setError('프롬프트를 입력해주세요.'); return }
+  ): Promise<GeneratedResult[]> {
+    if (!prompt.trim()) { setError('프롬프트를 입력해주세요.'); return [] }
 
     const needsTogether = models.some((m) => m.provider === 'together')
     const needsOpenAI   = models.some((m) => m.provider === 'openai')
-    if (needsTogether && !apiKeys.together.trim()) { setError('Together AI API Key를 입력해주세요.'); return }
-    if (needsOpenAI   && !apiKeys.openai.trim())   { setError('OpenAI API Key를 입력해주세요.'); return }
+    if (needsTogether && !apiKeys.together.trim()) { setError('Together AI API Key를 입력해주세요.'); return [] }
+    if (needsOpenAI   && !apiKeys.openai.trim())   { setError('OpenAI API Key를 입력해주세요.'); return [] }
 
     setError(null)
     setLoading(true)
-    setResults([])
 
-    const tasks = models.map((m) => {
-      if (m.provider === 'openai') return generateOpenAI(apiKeys.openai, m.modelId, m.name, prompt, width, height)
-      return generateTogether(apiKeys.together, m.modelId, m.name, prompt, width, height, steps, m.noSteps ?? false)
+    // 즉시 placeholder 세팅 → 각 카드가 처음부터 스피너로 표시됨
+    const placeholders: GeneratedResult[] = models.map((m) => ({
+      modelId: m.modelId, modelName: m.name, url: '', loading: true,
+    }))
+    setResults(placeholders)
+
+    // 최종 결과를 모아서 히스토리 저장용으로 반환
+    const finalResults: GeneratedResult[] = [...placeholders]
+
+    const tasks = models.map((m, i) => {
+      const task = m.provider === 'openai'
+        ? generateOpenAI(apiKeys.openai, m.modelId, m.name, prompt, width, height)
+        : generateTogether(
+            apiKeys.together, m.modelId, m.name, prompt, negPrompt,
+            width, height, steps, m.noSteps ?? false, m.supportsNegative ?? false,
+          )
+
+      // 완료된 항목을 즉시 해당 인덱스에 교체
+      return task.then((result) => {
+        finalResults[i] = result
+        setResults((prev) => prev.map((r, idx) => (idx === i ? result : r)))
+      })
     })
 
-    const settled = await Promise.allSettled(tasks)
-    const imgs: GeneratedResult[] = settled.map((r, i) =>
-      r.status === 'fulfilled'
-        ? r.value
-        : { modelId: models[i].modelId, modelName: models[i].name, url: '', error: String((r as PromiseRejectedResult).reason) },
-    )
-
-    setResults(imgs)
+    await Promise.all(tasks)
     setLoading(false)
+    return finalResults
   }
 
   return { loading, results, error, generateAll }

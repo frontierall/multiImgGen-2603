@@ -3,6 +3,9 @@ import { Wand2 } from 'lucide-react'
 interface Props {
   prompt: string
   onPromptChange: (v: string) => void
+  negPrompt: string
+  onNegPromptChange: (v: string) => void
+  showNegPrompt: boolean
   width: number
   height: number
   steps: number
@@ -52,6 +55,9 @@ const SAMPLE_PROMPTS = [
 export default function PromptPanel({
   prompt,
   onPromptChange,
+  negPrompt,
+  onNegPromptChange,
+  showNegPrompt,
   width,
   height,
   steps,
@@ -127,6 +133,31 @@ export default function PromptPanel({
         rows={3}
         className="w-full bg-slate-50 dark:bg-[#0f1117] border border-slate-200 dark:border-[#2a2d3a] rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 outline-none resize-none focus:border-violet-500/50 transition-colors"
       />
+
+      {/* negative prompt — 지원 모델 선택 시에만 표시 */}
+      {showNegPrompt && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-rose-400 dark:text-rose-400">🚫 네거티브 프롬프트</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">(선택된 모델 중 지원 모델에만 적용)</span>
+            {negPrompt && (
+              <button
+                onClick={() => onNegPromptChange('')}
+                className="ml-auto text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                초기화
+              </button>
+            )}
+          </div>
+          <textarea
+            value={negPrompt}
+            onChange={(e) => onNegPromptChange(e.target.value)}
+            placeholder="제외할 요소 입력... (예: blurry, low quality, watermark, distorted)"
+            rows={2}
+            className="w-full bg-slate-50 dark:bg-[#0f1117] border border-rose-200 dark:border-rose-900/50 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 outline-none resize-none focus:border-rose-400/50 transition-colors"
+          />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         {/* size presets */}

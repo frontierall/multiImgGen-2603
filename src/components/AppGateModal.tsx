@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Lock, Wand2 } from 'lucide-react'
 
-const GATE_PASSCODE = '1234'
+const GATE_PASSCODE = import.meta.env.VITE_GATE_PASSCODE ?? '1234'
 const GATE_KEY      = 'app_gate_unlocked'
 
 export function isGateUnlocked(): boolean {

@@ -10,6 +10,7 @@ interface Props {
 const PROVIDERS = [
   { key: 'together' as keyof ApiKeys, label: 'Together AI', color: '#7c3aed' },
   { key: 'openai' as keyof ApiKeys, label: 'OpenAI', color: '#10a37f' },
+  { key: 'openrouter' as keyof ApiKeys, label: 'OpenRouter', color: '#0f172a' },
 ]
 
 export default function ApiKeyInput({ apiKeys, onChange }: Props) {
@@ -28,7 +29,7 @@ export default function ApiKeyInput({ apiKeys, onChange }: Props) {
         <span className="text-sm text-slate-600 dark:text-slate-300">API Keys</span>
         {setCount > 0 && (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium">
-            {setCount}/3
+            {setCount}/{PROVIDERS.length}
           </span>
         )}
         <ChevronDown size={13} className={`text-slate-400 dark:text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />

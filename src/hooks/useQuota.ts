@@ -2,9 +2,9 @@ import { useState } from 'react'
 
 const STORAGE_KEY = 'img_gen_used'
 const CAP_KEY     = 'img_gen_cap'
-const BASE_CAP    = 10
+const BASE_CAP    = 15
 const ADD_AMOUNT  = 10
-const PASSCODE    = '1010'
+const PASSCODE    = import.meta.env.VITE_QUOTA_PASSCODE ?? '1010'
 
 export function useQuota() {
   const [used, setUsed] = useState<number>(() =>
