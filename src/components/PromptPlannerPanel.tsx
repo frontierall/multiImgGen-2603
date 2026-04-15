@@ -1,5 +1,12 @@
-import { CheckCircle2, Sparkles } from 'lucide-react'
+import { CheckCircle2, Clapperboard, Presentation, Sparkles, SwatchBook } from 'lucide-react'
 import type { PromptVariant } from '../hooks/usePromptPlanner'
+import {
+  PLANNER_PURPOSES,
+  PLANNER_QUICK_PRESETS,
+  PLANNER_VISUAL_STYLES,
+  type PlannerPurposeId,
+  type PlannerVisualStyleId,
+} from '../hooks/usePromptPlanner'
 import type { OpenRouterPrice } from '../hooks/useOpenRouterPricing'
 
 export const OPENROUTER_MODELS = [
@@ -9,6 +16,10 @@ export const OPENROUTER_MODELS = [
   { id: 'minimax/minimax-m2.5', label: 'MiniMax M2.5', desc: '고성능 대안', badge: 'Alt' },
   { id: 'minimax/minimax-m2.5:free', label: 'MiniMax M2.5 Free', desc: '무료 테스트', badge: 'Free' },
 ]
+
+export function getOpenRouterModelLabel(modelId: string) {
+  return OPENROUTER_MODELS.find((model) => model.id === modelId)?.label ?? modelId
+}
 
 interface Props {
   content: string
@@ -26,6 +37,11 @@ interface Props {
   error: string | null
   onGenerate: () => void
   onApplyPrompt: (prompt: string) => void
+  purposeId: PlannerPurposeId
+  onPurposeChange: (value: PlannerPurposeId) => void
+  styleId: PlannerVisualStyleId
+  onStyleChange: (value: PlannerVisualStyleId) => void
+  onQuickPresetSelect: (purposeId: PlannerPurposeId, styleId: PlannerVisualStyleId) => void
 }
 
 export default function PromptPlannerPanel({
@@ -44,6 +60,11 @@ export default function PromptPlannerPanel({
   error,
   onGenerate,
   onApplyPrompt,
+  purposeId,
+  onPurposeChange,
+  styleId,
+  onStyleChange,
+  onQuickPresetSelect,
 }: Props) {
   function formatPerMillion(value: number) {
     if (value === 0) return '무료'
@@ -155,6 +176,111 @@ export default function PromptPlannerPanel({
             </button>
           )
         })}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1.4fr] gap-3">
+        <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 dark:border-[#2a2d3a] bg-slate-50 dark:bg-[#0f1117] p-3">
+          <div className="flex items-center gap-2">
+            <Presentation size={14} className="text-emerald-500" />
+            <div>
+              <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">용도</div>
+              <div className="text-[11px] text-slate-400 dark:text-slate-500">이미지의 사용 맥락을 먼저 고릅니다.</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {PLANNER_PURPOSES.map((purpose) => {
+              const isSelected = purposeId === purpose.id
+              const Icon = purpose.id === 'lecture' ? Presentation : purpose.id === 'youtube' ? Clapperboard : SwatchBook
+              return (
+                <button
+                  key={purpose.id}
+                  onClick={() => onPurposeChange(purpose.id)}
+                  className={`text-left rounded-xl border px-3 py-2.5 flex flex-col gap-1 transition-all ${
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-500/10'
+                      : 'border-slate-200 dark:border-[#2a2d3a] bg-white dark:bg-[#11141d] hover:border-slate-300 dark:hover:border-[#3a3d4a]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Icon size={13} className={isSelected ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'} />
+                      <span className={`text-xs font-semibold ${isSelected ? 'text-emerald-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                        {purpose.label}
+                      </span>
+                    </div>
+                    {isSelected && <CheckCircle2 size={13} className="shrink-0 text-emerald-500" />}
+                  </div>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 leading-snug">{purpose.desc}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 dark:border-[#2a2d3a] bg-slate-50 dark:bg-[#0f1117] p-3">
+          <div className="flex items-center gap-2">
+            <SwatchBook size={14} className="text-violet-500" />
+            <div>
+              <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">스타일</div>
+              <div className="text-[11px] text-slate-400 dark:text-slate-500">비주얼 결을 정합니다. 용도와 독립적으로 선택됩니다.</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 xl:grid-cols-5 gap-2">
+            {PLANNER_VISUAL_STYLES.map((style) => {
+              const isSelected = styleId === style.id
+              return (
+                <button
+                  key={style.id}
+                  onClick={() => onStyleChange(style.id)}
+                  className={`text-left rounded-xl border px-3 py-2.5 flex flex-col gap-1 transition-all ${
+                    isSelected
+                      ? 'border-violet-500 bg-violet-500/10'
+                      : 'border-slate-200 dark:border-[#2a2d3a] bg-white dark:bg-[#11141d] hover:border-slate-300 dark:hover:border-[#3a3d4a]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className={`text-xs font-semibold ${isSelected ? 'text-violet-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                      {style.label}
+                    </span>
+                    {isSelected && <CheckCircle2 size={13} className="shrink-0 text-violet-500" />}
+                  </div>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 leading-snug">{style.desc}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 dark:border-[#2a2d3a] bg-slate-50 dark:bg-[#0f1117] p-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">빠른 추천 조합</div>
+            <div className="text-[11px] text-slate-400 dark:text-slate-500">자주 쓰는 5개 조합을 한 번에 적용합니다.</div>
+          </div>
+          <div className="text-[11px] text-slate-400 dark:text-slate-500">
+            현재 선택: {PLANNER_PURPOSES.find((item) => item.id === purposeId)?.label} + {PLANNER_VISUAL_STYLES.find((item) => item.id === styleId)?.label}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {PLANNER_QUICK_PRESETS.map((preset) => {
+            const isSelected = preset.purposeId === purposeId && preset.styleId === styleId
+            return (
+              <button
+                key={preset.id}
+                onClick={() => onQuickPresetSelect(preset.purposeId, preset.styleId)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                  isSelected
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                    : 'border-slate-200 dark:border-[#2a2d3a] text-slate-500 dark:text-slate-400 hover:border-emerald-500/50 hover:text-emerald-600 dark:hover:text-emerald-300'
+                }`}
+                title={preset.desc}
+              >
+                {preset.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <textarea

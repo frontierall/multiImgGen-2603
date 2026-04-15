@@ -5,7 +5,12 @@ import ApiKeyInput from './components/ApiKeyInput'
 import ProviderSection from './components/ProviderSection'
 import SelectedSection from './components/SelectedSection'
 import PromptPanel from './components/PromptPanel'
-import PromptPlannerPanel from './components/PromptPlannerPanel'
+import PromptPlannerPanel, { getOpenRouterModelLabel } from './components/PromptPlannerPanel'
+import {
+  buildPlannerStyleHint,
+  type PlannerPurposeId,
+  type PlannerVisualStyleId,
+} from './hooks/usePromptPlanner'
 import ResultsPanel from './components/ResultsPanel'
 import { useImageGen, type ApiKeys, type HistoryEntry } from './hooks/useImageGen'
 import { useOpenRouterPricing } from './hooks/useOpenRouterPricing'
@@ -41,6 +46,12 @@ export default function App() {
   const [height, setHeight]   = useState(1024)
   const [steps, setSteps]     = useState(4)
   const [openrouterModel, setOpenrouterModel] = useState('google/gemini-2.5-flash-lite')
+  const [plannerPurposeId, setPlannerPurposeId] = useState<PlannerPurposeId>(
+    () => (localStorage.getItem('planner_purpose') as PlannerPurposeId | null) ?? 'general'
+  )
+  const [plannerStyleId, setPlannerStyleId] = useState<PlannerVisualStyleId>(
+    () => (localStorage.getItem('planner_style') as PlannerVisualStyleId | null) ?? 'illustration'
+  )
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [historyReady, setHistoryReady] = useState(false)
 
@@ -145,14 +156,34 @@ export default function App() {
     )
     if (finalResults.length > 0) {
       setHistory((prev) => [
-        { id: Date.now(), prompt, negPrompt, results: finalResults },
+        {
+          id: Date.now(),
+          prompt,
+          negPrompt,
+          plannerLabel: getOpenRouterModelLabel(openrouterModel),
+          plannerModelId: openrouterModel,
+          results: finalResults,
+        },
         ...prev,
       ].slice(0, 7))
     }
   }
 
+  function applyPlannerSelection(purposeId: PlannerPurposeId, styleId: PlannerVisualStyleId) {
+    setPlannerPurposeId(purposeId)
+    setPlannerStyleId(styleId)
+    localStorage.setItem('planner_purpose', purposeId)
+    localStorage.setItem('planner_style', styleId)
+
+    if (purposeId === 'youtube') {
+      setWidth(1344)
+      setHeight(768)
+    }
+  }
+
   function handleAnalyzePrompts() {
-    generatePromptVariants(sourceContent, apiKeys.openrouter, openrouterModel)
+    const styleHint = buildPlannerStyleHint(plannerPurposeId, plannerStyleId)
+    generatePromptVariants(sourceContent, apiKeys.openrouter, openrouterModel, styleHint)
   }
 
   if (!gateOpen) return <AppGateModal onUnlock={() => setGateOpen(true)} />
@@ -216,6 +247,11 @@ export default function App() {
           error={planningError}
           onGenerate={handleAnalyzePrompts}
           onApplyPrompt={setPrompt}
+          purposeId={plannerPurposeId}
+          onPurposeChange={(value) => applyPlannerSelection(value, plannerStyleId)}
+          styleId={plannerStyleId}
+          onStyleChange={(value) => applyPlannerSelection(plannerPurposeId, value)}
+          onQuickPresetSelect={applyPlannerSelection}
         />
 
         {/* prompt panel */}
