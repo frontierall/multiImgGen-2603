@@ -20,13 +20,17 @@
 ## 핵심 기능 목록
 
 1. 모델 카드 다중 선택 (체크박스) → 선택된 모델들을 동시에 생성
-2. 모델 검색 (모델명 · 회사명), 가격 낮은 순 정렬
+2. 모델 검색 (모델명 · 회사명), 회사 필터 탭, 가격 낮은 순 정렬
 3. API Key 입력 — sessionStorage 저장 (탭 닫으면 자동 삭제)
 4. 쿼터 시스템 — 기본 10장, 암호 입력마다 +10장 추가
 5. 결과 그리드 — hover 시 다운로드 버튼 노출
 6. 에러 로그 패널 — 실패 모델과 에러 메시지를 결과 하단에 표시
-7. 샘플 프롬프트 버튼 (풍경, 사이버펑크, 인물, 애니)
-8. 이미지 크기 프리셋 (1:1, 16:9, 9:16, 4:3) + Steps 입력
+7. 히스토리 — 최근 5회 생성 결과를 ResultsPanel에 보관 (세션 내)
+8. 샘플 프롬프트 버튼 (풍경, 사이버펑크, 인물, 애니)
+9. 이미지 크기 프리셋 (1:1, 16:9, 9:16, 4:3) + Steps 입력
+10. Negative 프롬프트 — `supportsNegative: true` 모델 선택 시 입력란 자동 노출
+11. **ResultsPanel 상단 배치** — 생성 버튼 누른 후 스크롤 없이 바로 결과 확인
+12. **Together AI 가격 최신화** — `useTogetherPricing` hook, `refresh(apiKey)` 호출로 실시간 조회, 변경된 가격은 ModelCard에 ↑/↓ 배지로 표시
 
 ---
 
@@ -288,20 +292,110 @@ const CAP_KEY     = 'img_gen_cap'   // 현재 한도 (기본 10)
 
 ```
 App.tsx
-├── ApiKeyInput       — Together AI / OpenAI API Key 드롭다운 입력
-├── PromptPanel       — 프롬프트, 크기 프리셋, Steps, 생성 버튼, 쿼터 바
+├── AppGateModal      — 앱 진입 암호 게이트 (한 번 통과하면 localStorage에 저장)
+├── PasscodeModal     — 쿼터 충전 암호 입력 모달
+├── [header]          — sticky 헤더: 검색, ApiKeyInput, 다크모드 토글
+├── PromptPlannerPanel — OpenRouter 기반 프롬프트 변형 생성 패널
+├── PromptPanel       — 프롬프트, Negative 프롬프트(조건부), 크기 프리셋, Steps, 생성 버튼, 쿼터 바
+├── ResultsPanel      — 결과 이미지 그리드 + 에러 로그 패널 + 히스토리(최근 5회)
 ├── SelectedSection   — 선택된 모델 상단 표시 + 전체 해제
-├── ProviderSection   — 프로바이더별 그룹 (회사별 서브그룹)
-│   └── ModelCard     — 개별 모델 카드 (체크박스, 가격, NEW 뱃지)
-├── ResultsPanel      — 결과 이미지 그리드 + 에러 로그 패널
-└── PasscodeModal     — 쿼터 충전 암호 입력 모달
+└── [모델 선택 카드]  — 회사 필터 탭 + 가격순/기본순 정렬 + 평면 ModelCard 그리드
+    └── ModelCard     — 개별 모델 카드 (체크박스, 가격, NEW 뱃지, Together 가격 오버라이드)
 
 hooks/
-├── useImageGen.ts    — API 호출 (Together AI / OpenAI)
-└── useQuota.ts       — 쿼터 관리 (localStorage)
+├── useImageGen.ts        — API 호출 (Together AI / OpenAI), 히스토리 반환
+├── useQuota.ts           — 쿼터 관리 (localStorage)
+├── useOpenRouterPricing.ts — OpenRouter 모델 가격 실시간 조회
+├── useTogetherPricing.ts   — Together AI 모델 가격 실시간 조회 (API Key 필요)
+└── usePromptPlanner.ts   — OpenRouter 기반 프롬프트 변형 생성
 
 data/
-└── imageModels.ts    — 모델 정의, groupByProvider(), COMPANY_COLORS
+└── imageModels.ts    — 모델 정의, groupByProvider(), groupByCompany(), COMPANY_COLORS
+```
+
+### 레이아웃 순서 (위→아래)
+
+```
+sticky header
+PromptPlannerPanel
+PromptPanel
+[에러 메시지]
+ResultsPanel          ← PromptPanel 바로 아래 배치 (생성 후 스크롤 불필요)
+SelectedSection
+[모델 선택 카드]      ← 회사 필터 탭 + 평면 그리드 (ProviderSection 대체)
+```
+
+> **주의:** `ProviderSection` 컴포넌트는 파일은 존재하지만 현재 App.tsx에서 사용하지 않음.
+> 모델 선택 UI는 App.tsx 인라인으로 구현된 평면 그리드를 사용.
+
+---
+
+## Together AI 가격 최신화
+
+Together AI는 시간이 지나면서 모델 가격이 변경될 수 있음.
+`useTogetherPricing` hook으로 실시간 조회 후 ModelCard에 반영.
+
+### API 엔드포인트
+
+```typescript
+GET https://api.together.xyz/v1/models
+Authorization: Bearer {TOGETHER_API_KEY}
+
+// 응답 (배열)
+[
+  {
+    "id": "black-forest-labs/FLUX.1-schnell",
+    "type": "image",
+    "pricing": {
+      "imagecost": "0.003"   // USD per image — 이 값을 사용
+    }
+  },
+  ...
+]
+```
+
+### 동작 방식
+
+1. `useTogetherPricing` hook: `refresh(apiKey)` 호출 시 API 요청 → `modelId → price` 맵 반환
+2. App.tsx에서 `togetherPrices[model.modelId]`를 `ModelCard`의 `overridePrice` prop으로 전달
+3. ModelCard: `overridePrice`가 있으면 표시 가격 교체, 하드코딩 값과 다르면 ↑/↓ 배지 표시
+
+```tsx
+// ModelCard — 가격 변동 배지
+const displayPrice = overridePrice ?? model.pricePerImage
+const priceChanged = overridePrice !== undefined && overridePrice !== model.pricePerImage
+
+{priceChanged && (
+  <span className={overridePrice > model.pricePerImage ? 'text-red-400' : 'text-emerald-400'}>
+    {overridePrice > model.pricePerImage ? '↑' : '↓'} ${model.pricePerImage.toFixed(3)}
+  </span>
+)}
+```
+
+> **API Key 없을 때:** `refresh()` 호출 시 "Together AI API Key를 먼저 입력해주세요." 에러 반환, 상태 변경 없음.
+
+---
+
+## 모델 선택 UI (평면 그리드)
+
+`ProviderSection` 아코디언 대신, App.tsx 인라인으로 구현된 단일 카드 UI.
+
+```tsx
+// 회사 필터 탭 (전체 / Black Forest Labs / Stability AI / ...)
+const [companyFilter, setCompanyFilter] = useState('all')
+
+// 필터링 + 정렬
+const filteredModels = useMemo(() => {
+  let models = IMAGE_MODELS.filter(
+    (m) =>
+      (m.name.toLowerCase().includes(q) || m.author.toLowerCase().includes(q)) &&
+      (companyFilter === 'all' || m.author === companyFilter),
+  )
+  if (sortMode === 'price') models.sort((a, b) => a.pricePerImage - b.pricePerImage)
+  return models
+}, [search, sortMode, companyFilter])
+
+// 그리드: grid-cols-2 sm:grid-cols-3 lg:grid-cols-5
 ```
 
 ---

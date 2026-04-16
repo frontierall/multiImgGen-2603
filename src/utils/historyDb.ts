@@ -5,26 +5,34 @@ const STORE_NAME = 'history'
 const DB_VERSION = 1
 const MAX_HISTORY_ITEMS = 7
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = window.indexedDB.open(DB_NAME, DB_VERSION)
+let dbPromise: Promise<IDBDatabase> | null = null
 
-    request.onupgradeneeded = () => {
-      const db = request.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+function getDb(): Promise<IDBDatabase> {
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const request = window.indexedDB.open(DB_NAME, DB_VERSION)
+
+      request.onupgradeneeded = () => {
+        const db = request.result
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+        }
       }
-    }
 
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB를 열 수 없습니다.'))
-  })
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => {
+        dbPromise = null
+        reject(request.error ?? new Error('IndexedDB를 열 수 없습니다.'))
+      }
+    })
+  }
+  return dbPromise
 }
 
 export async function loadHistoryEntries(): Promise<HistoryEntry[]> {
   if (typeof window === 'undefined' || !window.indexedDB) return []
 
-  const db = await openDb()
+  const db = await getDb()
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, 'readonly')
     const store = transaction.objectStore(STORE_NAME)
@@ -43,7 +51,7 @@ export async function loadHistoryEntries(): Promise<HistoryEntry[]> {
 export async function saveHistoryEntries(entries: HistoryEntry[]): Promise<void> {
   if (typeof window === 'undefined' || !window.indexedDB) return
 
-  const db = await openDb()
+  const db = await getDb()
   const trimmed = entries.slice(0, MAX_HISTORY_ITEMS)
 
   await new Promise<void>((resolve, reject) => {

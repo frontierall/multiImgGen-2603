@@ -13,6 +13,8 @@ export interface HistoryEntry {
   id: number
   prompt: string
   negPrompt: string
+  plannerLabel?: string
+  plannerModelId?: string
   results: GeneratedResult[]
 }
 

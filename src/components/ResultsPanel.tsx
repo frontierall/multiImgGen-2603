@@ -1,5 +1,10 @@
 import { useState } from 'react'
+<<<<<<< Updated upstream
 import { Download, AlertCircle, Loader2, Terminal, ChevronDown, Repeat2 } from 'lucide-react'
+=======
+import { Download, AlertCircle, Loader2, Terminal, ChevronDown, FolderDown } from 'lucide-react'
+import JSZip from 'jszip'
+>>>>>>> Stashed changes
 import type { GeneratedResult, HistoryEntry } from '../hooks/useImageGen'
 
 interface Props {
@@ -19,6 +24,7 @@ function download(r: GeneratedResult) {
   a.click()
 }
 
+<<<<<<< Updated upstream
 function ResultGrid({
   results,
   onSimilarImage,
@@ -28,6 +34,56 @@ function ResultGrid({
   onSimilarImage?: (url: string) => void
   analyzing?: boolean
 }) {
+=======
+async function downloadZip(results: GeneratedResult[], label: string) {
+  const images = results.filter((r) => !r.error && !r.loading && r.url)
+  if (images.length === 0) return
+
+  const zip = new JSZip()
+
+  for (const r of images) {
+    // base64 data URL → binary
+    const base64 = r.url.replace(/^data:image\/\w+;base64,/, '')
+    const filename = `${r.modelName.replace(/\s+/g, '_')}.png`
+    zip.file(filename, base64, { base64: true })
+  }
+
+  const blob = await zip.generateAsync({ type: 'blob' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `${label.replace(/\s+/g, '_')}.zip`
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+function ZipButton({ results, label }: { results: GeneratedResult[]; label: string }) {
+  const [zipping, setZipping] = useState(false)
+  const available = results.filter((r) => !r.error && !r.loading && r.url)
+  if (available.length === 0) return null
+
+  async function handleClick() {
+    setZipping(true)
+    try { await downloadZip(results, label) } finally { setZipping(false) }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={zipping}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ${
+        zipping
+          ? 'bg-slate-100 dark:bg-[#2a2d3a] text-slate-400 cursor-not-allowed'
+          : 'bg-slate-100 dark:bg-[#2a2d3a] hover:bg-slate-200 dark:hover:bg-[#3a3d4a] text-slate-600 dark:text-slate-300'
+      }`}
+    >
+      <FolderDown size={13} />
+      {zipping ? 'ZIP 생성 중...' : `전체 ZIP (${available.length}장)`}
+    </button>
+  )
+}
+
+function ResultGrid({ results }: { results: GeneratedResult[] }) {
+>>>>>>> Stashed changes
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
       {results.map((r, idx) => (
@@ -109,8 +165,16 @@ export default function ResultsPanel({ results, history, onSimilarImage, analyzi
       {/* ── 현재 결과 ── */}
       {hasCurrentResults && (
         <div>
+<<<<<<< Updated upstream
           <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3">생성 결과</h2>
           <ResultGrid results={results} onSimilarImage={onSimilarImage} analyzing={analyzing} />
+=======
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400">생성 결과</h2>
+            <ZipButton results={results} label="generated" />
+          </div>
+          <ResultGrid results={results} />
+>>>>>>> Stashed changes
 
           {/* 에러 로그 */}
           {errors.length > 0 && (
@@ -169,6 +233,11 @@ export default function ResultsPanel({ results, history, onSimilarImage, analyzi
                       className={`text-slate-400 shrink-0 transition-transform ${isOpen ? '' : '-rotate-90'}`}
                     />
                     <span className="text-xs text-slate-600 dark:text-slate-300 flex-1 truncate">{shortPrompt}</span>
+                    {entry.plannerLabel && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 shrink-0">
+                        AI {entry.plannerLabel}
+                      </span>
+                    )}
                     {entry.negPrompt && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-400 shrink-0">🚫 neg</span>
                     )}
@@ -180,6 +249,16 @@ export default function ResultsPanel({ results, history, onSimilarImage, analyzi
                   {/* 펼쳐진 미니 그리드 */}
                   {isOpen && (
                     <div className="p-3 bg-white dark:bg-[#0f1117]">
+                      <div className="mb-3 flex items-center gap-2 flex-wrap">
+                        {entry.plannerLabel && (
+                          <>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">프롬프트 AI</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
+                              {entry.plannerLabel}
+                            </span>
+                          </>
+                        )}
+                      </div>
                       <div className="mb-3 flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] text-slate-400 dark:text-slate-500">생성 모델</span>
                         {shortModelNames.map((name) => (
@@ -204,10 +283,15 @@ export default function ResultsPanel({ results, history, onSimilarImage, analyzi
                           저장된 이미지가 없거나 생성이 모두 실패한 기록입니다.
                         </div>
                       ) : (
+                        <>
+                        <div className="flex justify-end mb-2">
+                          <ZipButton results={entry.results} label={`history_${entry.id}`} />
+                        </div>
                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                           {imageResults.map((r, idx) => (
                           <div key={`${r.modelId}-${idx}`} className="group relative rounded-lg overflow-hidden">
                             <img src={r.url} alt={r.modelName} className="w-full aspect-square object-cover" />
+<<<<<<< Updated upstream
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
                               <div className="w-full p-1 translate-y-full group-hover:translate-y-0 transition-transform flex items-center justify-between">
                                 <span className="text-[9px] text-white truncate max-w-[50%]">{r.modelName}</span>
@@ -229,11 +313,28 @@ export default function ResultsPanel({ results, history, onSimilarImage, analyzi
                                     <Download size={10} />
                                   </button>
                                 </div>
+=======
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/55 transition-all flex items-end">
+                              <div className="w-full p-1.5 translate-y-full group-hover:translate-y-0 transition-transform flex items-end justify-between gap-2">
+                                <div className="min-w-0">
+                                  {entry.plannerLabel && (
+                                    <p className="text-[8px] text-emerald-200 truncate">AI {entry.plannerLabel}</p>
+                                  )}
+                                  <p className="text-[9px] text-white truncate">{r.modelName}</p>
+                                </div>
+                                <button
+                                  onClick={() => download(r)}
+                                  className="p-1 rounded bg-white/20 hover:bg-white/30 text-white"
+                                >
+                                  <Download size={10} />
+                                </button>
+>>>>>>> Stashed changes
                               </div>
                             </div>
                           </div>
                           ))}
                         </div>
+                        </>
                       )}
                     </div>
                   )}

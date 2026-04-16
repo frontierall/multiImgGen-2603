@@ -18,7 +18,8 @@
       "WebFetch(domain:costgoat.com)",
       "WebFetch(domain:www.aifreeapi.com)",
       "WebFetch(domain:invertedstone.com)",
-      "WebFetch(domain:langcopilot.com)"
+      "WebFetch(domain:langcopilot.com)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
