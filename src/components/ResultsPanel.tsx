@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, AlertCircle, Loader2, Terminal, ChevronDown } from 'lucide-react'
+import { Download, AlertCircle, Loader2, Terminal, ChevronDown, Repeat2 } from 'lucide-react'
 import type { GeneratedResult, HistoryEntry } from '../hooks/useImageGen'
 
 interface Props {
@@ -7,6 +7,8 @@ interface Props {
   loading: boolean
   selectedCount: number
   history: HistoryEntry[]
+  onSimilarImage?: (url: string) => void
+  analyzing?: boolean
 }
 
 function download(r: GeneratedResult) {
@@ -17,7 +19,15 @@ function download(r: GeneratedResult) {
   a.click()
 }
 
-function ResultGrid({ results }: { results: GeneratedResult[] }) {
+function ResultGrid({
+  results,
+  onSimilarImage,
+  analyzing,
+}: {
+  results: GeneratedResult[]
+  onSimilarImage?: (url: string) => void
+  analyzing?: boolean
+}) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
       {results.map((r, idx) => (
@@ -43,13 +53,25 @@ function ResultGrid({ results }: { results: GeneratedResult[] }) {
               <img src={r.url} alt={r.modelName} className="w-full aspect-square object-cover" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
                 <div className="w-full p-2 translate-y-full group-hover:translate-y-0 transition-transform flex items-center justify-between">
-                  <span className="text-xs text-white font-medium truncate max-w-[70%]">{r.modelName}</span>
-                  <button
-                    onClick={() => download(r)}
-                    className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
-                  >
-                    <Download size={13} />
-                  </button>
+                  <span className="text-xs text-white font-medium truncate max-w-[55%]">{r.modelName}</span>
+                  <div className="flex items-center gap-1">
+                    {onSimilarImage && (
+                      <button
+                        onClick={() => onSimilarImage(r.url)}
+                        disabled={analyzing}
+                        title="유사 이미지 생성"
+                        className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors disabled:opacity-40"
+                      >
+                        {analyzing ? <Loader2 size={13} className="animate-spin" /> : <Repeat2 size={13} />}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => download(r)}
+                      className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-colors"
+                    >
+                      <Download size={13} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </>
@@ -65,7 +87,7 @@ function ResultGrid({ results }: { results: GeneratedResult[] }) {
   )
 }
 
-export default function ResultsPanel({ results, history }: Props) {
+export default function ResultsPanel({ results, history, onSimilarImage, analyzing }: Props) {
   const [openHistory, setOpenHistory] = useState<Set<number>>(new Set())
 
   function toggleHistory(id: number) {
@@ -88,7 +110,7 @@ export default function ResultsPanel({ results, history }: Props) {
       {hasCurrentResults && (
         <div>
           <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-3">생성 결과</h2>
-          <ResultGrid results={results} />
+          <ResultGrid results={results} onSimilarImage={onSimilarImage} analyzing={analyzing} />
 
           {/* 에러 로그 */}
           {errors.length > 0 && (
@@ -188,13 +210,25 @@ export default function ResultsPanel({ results, history }: Props) {
                             <img src={r.url} alt={r.modelName} className="w-full aspect-square object-cover" />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end">
                               <div className="w-full p-1 translate-y-full group-hover:translate-y-0 transition-transform flex items-center justify-between">
-                                <span className="text-[9px] text-white truncate max-w-[60%]">{r.modelName}</span>
-                                <button
-                                  onClick={() => download(r)}
-                                  className="p-1 rounded bg-white/20 hover:bg-white/30 text-white"
-                                >
-                                  <Download size={10} />
-                                </button>
+                                <span className="text-[9px] text-white truncate max-w-[50%]">{r.modelName}</span>
+                                <div className="flex items-center gap-0.5">
+                                  {onSimilarImage && (
+                                    <button
+                                      onClick={() => onSimilarImage(r.url)}
+                                      disabled={analyzing}
+                                      title="유사 이미지 생성"
+                                      className="p-1 rounded bg-white/20 hover:bg-white/30 text-white disabled:opacity-40"
+                                    >
+                                      {analyzing ? <Loader2 size={10} className="animate-spin" /> : <Repeat2 size={10} />}
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => download(r)}
+                                    className="p-1 rounded bg-white/20 hover:bg-white/30 text-white"
+                                  >
+                                    <Download size={10} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>

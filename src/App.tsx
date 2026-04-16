@@ -91,6 +91,9 @@ export default function App() {
     variants: promptVariants,
     error: planningError,
     generate: generatePromptVariants,
+    analyzing,
+    analyzeError,
+    analyzeImage,
   } = usePromptPlanner()
   const {
     prices: openrouterPrices,
@@ -186,6 +189,36 @@ export default function App() {
     generatePromptVariants(sourceContent, apiKeys.openrouter, openrouterModel, styleHint)
   }
 
+  async function handleSimilarImageGenerate(imageUrl: string) {
+    const analyzedPrompt = await analyzeImage(imageUrl, apiKeys.openrouter, openrouterModel)
+    if (!analyzedPrompt) return
+
+    setPrompt(analyzedPrompt)
+
+    if (isExhausted) { setShowPasscode(true); return }
+    const capped = selectedModels.slice(0, remaining)
+    if (capped.length === 0) return
+    if (!consume(capped.length)) return
+
+    const finalResults = await generateAll(
+      capped.map((m) => ({ modelId: m.modelId, name: m.name, provider: m.provider, noSteps: m.noSteps, supportsNegative: m.supportsNegative })),
+      analyzedPrompt, negPrompt, width, height, steps,
+    )
+    if (finalResults.length > 0) {
+      setHistory((prev) => [
+        {
+          id: Date.now(),
+          prompt: analyzedPrompt,
+          negPrompt,
+          plannerLabel: getOpenRouterModelLabel(openrouterModel),
+          plannerModelId: openrouterModel,
+          results: finalResults,
+        },
+        ...prev,
+      ].slice(0, 7))
+    }
+  }
+
   if (!gateOpen) return <AppGateModal onUnlock={() => setGateOpen(true)} />
 
   return (
@@ -268,7 +301,7 @@ export default function App() {
           onHeightChange={setHeight}
           onStepsChange={setSteps}
           selectedCount={selectedModels.length}
-          loading={loading || planning}
+          loading={loading || planning || analyzing}
           onGenerate={handleGenerate}
           remaining={remaining}
           cap={cap}
@@ -280,7 +313,20 @@ export default function App() {
           </div>
         )}
 
-        <ResultsPanel results={results} loading={loading} selectedCount={selectedModels.length} history={history} />
+        {analyzeError && (
+          <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5">
+            유사 이미지 분석 오류: {analyzeError}
+          </div>
+        )}
+
+        <ResultsPanel
+          results={results}
+          loading={loading}
+          selectedCount={selectedModels.length}
+          history={history}
+          onSimilarImage={handleSimilarImageGenerate}
+          analyzing={analyzing}
+        />
 
         {/* ── selected models (top) ── */}
         <SelectedSection

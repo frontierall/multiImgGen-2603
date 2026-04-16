@@ -154,6 +154,46 @@ function normalizeResult(raw: unknown): PlannerResult {
   }
 }
 
+async function callOpenRouterVision(apiKey: string, model: string, imageUrl: string): Promise<string> {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': window.location.origin,
+      'X-Title': 'Multi Image Gen',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: imageUrl } },
+          {
+            type: 'text',
+            text: 'Analyze this image and write a single detailed English image generation prompt that would produce a visually similar image with the same style, composition, lighting, color palette, and subject matter. Output only the prompt text, no explanations or labels.',
+          },
+        ],
+      }],
+      temperature: 0.3,
+    }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    let message = `OpenRouter 오류 (${res.status})`
+    try { message = JSON.parse(text)?.error?.message ?? message } catch {}
+    throw new Error(message)
+  }
+
+  const data = await res.json()
+  const content = data?.choices?.[0]?.message?.content
+  if (typeof content !== 'string' || !content.trim()) {
+    throw new Error('이미지 분석 응답이 비어 있습니다.')
+  }
+  return content.trim()
+}
+
 async function callOpenRouter(apiKey: string, model: string, content: string, styleHint?: string): Promise<PlannerResult> {
   const styleInstruction = styleHint
     ? `\n스타일 지시 (반드시 아래 스타일을 모든 프롬프트에 반영하세요):\n${styleHint}\n`
@@ -245,6 +285,8 @@ export function usePromptPlanner() {
   const [summary, setSummary] = useState('')
   const [variants, setVariants] = useState<PromptVariant[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
 
   async function generate(content: string, apiKey: string, model: string, styleHint?: string) {
     if (!content.trim()) {
@@ -272,11 +314,28 @@ export function usePromptPlanner() {
     }
   }
 
+  async function analyzeImage(imageUrl: string, apiKey: string, model: string): Promise<string | null> {
+    if (!apiKey.trim()) {
+      setAnalyzeError('OpenRouter API Key를 입력해주세요.')
+      return null
+    }
+    setAnalyzing(true)
+    setAnalyzeError(null)
+    try {
+      return await callOpenRouterVision(apiKey, model, imageUrl)
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : String(err))
+      return null
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
   function clear() {
     setSummary('')
     setVariants([])
     setError(null)
   }
 
-  return { loading, summary, variants, error, generate, clear }
+  return { loading, summary, variants, error, generate, clear, analyzing, analyzeError, analyzeImage }
 }
